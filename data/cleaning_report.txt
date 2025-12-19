@@ -1,12 +1,12 @@
-Doublons supprimés (id): 252143
-Lignes supprimées (erreur parsing date): 51
-Lignes supprimées (date prise hors bornes [1900-maintenant]): 1
-Lignes supprimées (date upload hors bornes [1900-maintenant]): 0
-Lignes supprimées (upload avant prise): 376
-Lignes supprimées (hors zone géographique Lyon): 32643
-Colonnes supprimées:  date_taken_minute,  date_taken_hour,  date_upload_minute,  date_upload_hour, Unnamed: 16, Unnamed: 17, Unnamed: 18
+Duplicates removed (id): 252143
+Rows removed (date parsing error): 51
+Rows removed (taken date out of bounds [1900-now]): 1
+Rows removed (upload date out of bounds [1900-now]): 0
+Rows removed (upload before taken): 376
+Rows removed (outside Lyon geographic area): 32643
+Columns removed: date_taken_minute, date_taken_hour, date_upload_minute, date_upload_hour, Unnamed: 16, Unnamed: 17, Unnamed: 18
 
-Résumé:
-  Lignes initiales: 420240
-  Lignes finales: 135026
-  Total supprimé: 285214 (67.87%)
+Summary:
+  Initial rows: 420240
+  Final rows: 135026
+  Total removed: 285214 (67.87%)

@@ -30,7 +30,7 @@ def generate_lyon_map(csv_path):
          ).add_to(marker_cluster)
 
     # 5. Sauvegarde 
-    lyon_map.save('lyon_tourism_map.html')
+    lyon_map.save('../data/lyon_tourism_map.html')
     print(f"Map generated with {len(df)} cleaned points. Open 'lyon_tourism_map.html' in your browser.")
 
 if __name__ == "__main__":
