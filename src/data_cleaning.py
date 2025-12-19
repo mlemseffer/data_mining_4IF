@@ -7,8 +7,8 @@ REPORT_PATH = "../data/cleaning_report.txt"
 
 # Colonnes à retirer (si présentes): heure et minute de prise/upload
 COLUMNS_TO_DROP = [
-    " date_taken_minute", " date_taken_hour",
-    " date_upload_minute", " date_upload_hour"
+    "date_taken_minute", "date_taken_hour",
+    "date_upload_minute", "date_upload_hour"
 ]
 
 MIN_DATE = datetime(1900, 1, 1)
@@ -27,6 +27,10 @@ def main():
     
     # Lecture: tout en chaînes pour éviter les avertissements de types mixtes
     df = pd.read_csv(INPUT_PATH, low_memory=False, dtype=str)
+    
+    # Supprimer les espaces au début et à la fin des noms de colonnes
+    df.columns = df.columns.str.strip()
+    print(f"Colonnes nettoyées: {list(df.columns)}")
     
     initial_count = len(df)
     print(f"Nombre initial de lignes: {initial_count}")
@@ -48,8 +52,8 @@ def main():
 
     # 2) Vérification de la présence des colonnes de dates
     # Les dates sont en colonnes séparées (année, mois, jour, heure, minute)
-    take_cols = [" date_taken_year", " date_taken_month", " date_taken_day", " date_taken_hour", " date_taken_minute"]
-    upload_cols = [" date_upload_year", " date_upload_month", " date_upload_day", " date_upload_hour", " date_upload_minute"]
+    take_cols = ["date_taken_year", "date_taken_month", "date_taken_day", "date_taken_hour", "date_taken_minute"]
+    upload_cols = ["date_upload_year", "date_upload_month", "date_upload_day", "date_upload_hour", "date_upload_minute"]
     
     required_cols = set(take_cols + upload_cols)
     if not required_cols.issubset(df.columns):
@@ -61,18 +65,18 @@ def main():
     
     # Construire les dates de prise (sans heure/minute pour simplifier)
     take_dates = pd.to_datetime(
-        df[" date_taken_year"].astype(str) + "-" + 
-        df[" date_taken_month"].astype(str) + "-" + 
-        df[" date_taken_day"].astype(str),
+        df["date_taken_year"].astype(str) + "-" + 
+        df["date_taken_month"].astype(str) + "-" + 
+        df["date_taken_day"].astype(str),
         errors="coerce",
         format="%Y-%m-%d"
     )
     
     # Construire les dates d'upload (sans heure/minute pour simplifier)
     upload_dates = pd.to_datetime(
-        df[" date_upload_year"].astype(str) + "-" + 
-        df[" date_upload_month"].astype(str) + "-" + 
-        df[" date_upload_day"].astype(str),
+        df["date_upload_year"].astype(str) + "-" + 
+        df["date_upload_month"].astype(str) + "-" + 
+        df["date_upload_day"].astype(str),
         errors="coerce",
         format="%Y-%m-%d"
     )
@@ -115,14 +119,14 @@ def main():
     before_geo = len(df)
     
     # Convertir lat et long en numérique
-    df[' lat'] = pd.to_numeric(df[' lat'], errors='coerce')
-    df[' long'] = pd.to_numeric(df[' long'], errors='coerce')
+    df['lat'] = pd.to_numeric(df['lat'], errors='coerce')
+    df['long'] = pd.to_numeric(df['long'], errors='coerce')
     
     # Filtrer par coordonnées géographiques
     mask_geo = (
-        (df[' lat'] >= LAT_MIN) & (df[' lat'] <= LAT_MAX) &
-        (df[' long'] >= LON_MIN) & (df[' long'] <= LON_MAX) &
-        df[' lat'].notna() & df[' long'].notna()
+        (df['lat'] >= LAT_MIN) & (df['lat'] <= LAT_MAX) &
+        (df['long'] >= LON_MIN) & (df['long'] <= LON_MAX) &
+        df['lat'].notna() & df['long'].notna()
     )
     
     df = df[mask_geo].reset_index(drop=True)
