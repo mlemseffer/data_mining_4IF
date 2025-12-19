@@ -20,12 +20,12 @@ def generate_lyon_map(csv_path):
     marker_cluster = MarkerCluster().add_to(lyon_map)
 
     # Supprimer les lignes avec lat/long manquantes
-    df = df.dropna(subset=[' lat', ' long'])
+    df = df.dropna(subset=['lat', 'long'])
 
     # 4. Ajout des points
     for idx, row in df.iterrows():
          folium.Marker(
-             location=[row[' lat'], row[' long']],
+             location=[row['lat'], row['long']],
              popup=f"Photo ID: {row['id']}",
          ).add_to(marker_cluster)
 
