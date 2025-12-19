@@ -33,7 +33,12 @@ pip install -r requirements.txt
 
 
 ## 🚀 Utilisation
-Pour quitter l'environnement virtuel :
+1. Exporter ses dépendances :
+    ```bash
+pip freeze > requirements.txt
+    ```
+
+2. Pour quitter l'environnement virtuel :
     ```bash
     deactivate
     ```
