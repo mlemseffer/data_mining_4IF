@@ -3,3 +3,11 @@ src/lyon_tourism_map.html
 src
 src/elbow_method.png
 iris
+
+# Ignorer tous les fichiers dans /data sauf flickr_data2.csv
+data/*
+!data/flickr_data2.csv
+
+# Ignorer les fichiers de verrouillage LibreOffice
+.~lock.*#
+*.~lock.*
