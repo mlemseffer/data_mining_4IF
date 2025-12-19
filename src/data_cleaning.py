@@ -23,17 +23,17 @@ LON_MAX = 4.895833   # 4°53'45"E
 
 
 def main():
-    print("Début du nettoyage des données...")
+    print("Starting data cleaning...")
     
     # Lecture: tout en chaînes pour éviter les avertissements de types mixtes
     df = pd.read_csv(INPUT_PATH, low_memory=False, dtype=str)
     
     # Supprimer les espaces au début et à la fin des noms de colonnes
     df.columns = df.columns.str.strip()
-    print(f"Colonnes nettoyées: {list(df.columns)}")
+    print(f"Cleaned columns: {list(df.columns)}")
     
     initial_count = len(df)
-    print(f"Nombre initial de lignes: {initial_count}")
+    print(f"Initial number of rows: {initial_count}")
     
     report = []
 
@@ -42,13 +42,13 @@ def main():
     if "id" in df.columns:
         df = df.drop_duplicates(subset=["id"], keep="first")
         removed_duplicates = before_duplicates - len(df)
-        report.append(f"Doublons supprimés (id): {removed_duplicates}")
-        print(f"Doublons supprimés: {removed_duplicates}")
+        report.append(f"Duplicates removed (id): {removed_duplicates}")
+        print(f"Duplicates removed: {removed_duplicates}")
     else:
         df = df.drop_duplicates(keep="first")
         removed_duplicates = before_duplicates - len(df)
-        report.append(f"Doublons supprimés (ligne entière): {removed_duplicates}")
-        print(f"Doublons supprimés: {removed_duplicates}")
+        report.append(f"Duplicates removed (full row): {removed_duplicates}")
+        print(f"Duplicates removed: {removed_duplicates}")
 
     # 2) Vérification de la présence des colonnes de dates
     # Les dates sont en colonnes séparées (année, mois, jour, heure, minute)
@@ -58,10 +58,10 @@ def main():
     required_cols = set(take_cols + upload_cols)
     if not required_cols.issubset(df.columns):
         missing = ", ".join(sorted(required_cols - set(df.columns)))
-        raise ValueError(f"Colonnes manquantes: {missing}")
+        raise ValueError(f"Missing columns: {missing}")
 
     # 3) Reconstruction des dates à partir des colonnes séparées
-    print("Reconstruction des dates à partir des colonnes année/mois/jour...")
+    print("Reconstructing dates from year/month/day columns...")
     
     # Construire les dates de prise (sans heure/minute pour simplifier)
     take_dates = pd.to_datetime(
@@ -104,18 +104,18 @@ def main():
     mask_keep = mask_parse_ok & mask_take_valid & mask_upload_valid & mask_chronology_ok
     df = df[mask_keep].reset_index(drop=True)
     
-    report.append(f"Lignes supprimées (erreur parsing date): {int(parse_errors)}")
-    report.append(f"Lignes supprimées (date prise hors bornes [1900-maintenant]): {int(removed_take_out)}")
-    report.append(f"Lignes supprimées (date upload hors bornes [1900-maintenant]): {int(removed_upload_out)}")
-    report.append(f"Lignes supprimées (upload avant prise): {int(removed_chronology)}")
+    report.append(f"Rows removed (date parsing error): {int(parse_errors)}")
+    report.append(f"Rows removed (taken date out of bounds [1900-now]): {int(removed_take_out)}")
+    report.append(f"Rows removed (upload date out of bounds [1900-now]): {int(removed_upload_out)}")
+    report.append(f"Rows removed (upload before taken): {int(removed_chronology)}")
     
-    print(f"Lignes supprimées pour erreur parsing: {int(parse_errors)}")
-    print(f"Lignes supprimées pour date prise hors bornes: {int(removed_take_out)}")
-    print(f"Lignes supprimées pour date upload hors bornes: {int(removed_upload_out)}")
-    print(f"Lignes supprimées pour upload avant prise: {int(removed_chronology)}")
+    print(f"Rows removed for date parsing error: {int(parse_errors)}")
+    print(f"Rows removed for taken date out of bounds: {int(removed_take_out)}")
+    print(f"Rows removed for upload date out of bounds: {int(removed_upload_out)}")
+    print(f"Rows removed for upload before taken: {int(removed_chronology)}")
 
     # 4.5) Filtre géographique - ne garder que les données dans le rectangle de Lyon
-    print("Application du filtre géographique...")
+    print("Applying geographic filter...")
     before_geo = len(df)
     
     # Convertir lat et long en numérique
@@ -132,8 +132,8 @@ def main():
     df = df[mask_geo].reset_index(drop=True)
     removed_geo = before_geo - len(df)
     
-    report.append(f"Lignes supprimées (hors zone géographique Lyon): {int(removed_geo)}")
-    print(f"Lignes supprimées hors zone géographique: {int(removed_geo)}")
+    report.append(f"Rows removed (outside Lyon geographic area): {int(removed_geo)}")
+    print(f"Rows removed outside geographic area: {int(removed_geo)}")
 
     # 5) Suppression des colonnes inutiles
     cols_removed = [c for c in COLUMNS_TO_DROP if c in df.columns]
@@ -144,31 +144,31 @@ def main():
     
     if cols_removed:
         df = df.drop(columns=cols_removed)
-        report.append(f"Colonnes supprimées: {', '.join(cols_removed)}")
-        print(f"Colonnes supprimées: {', '.join(cols_removed)}")
+        report.append(f"Columns removed: {', '.join(cols_removed)}")
+        print(f"Columns removed: {', '.join(cols_removed)}")
     else:
-        report.append("Colonnes supprimées: Aucune (colonnes non trouvées)")
-        print("Aucune colonne à supprimer (non trouvées dans le dataset)")
+        report.append("Columns removed: None (columns not found)")
+        print("No columns to remove (not found in dataset)")
 
     # 6) Résumé final
     final_count = len(df)
     total_removed = initial_count - final_count
-    report.append(f"\nRésumé:")
-    report.append(f"  Lignes initiales: {initial_count}")
-    report.append(f"  Lignes finales: {final_count}")
-    report.append(f"  Total supprimé: {total_removed} ({100*total_removed/initial_count:.2f}%)")
+    report.append(f"\nSummary:")
+    report.append(f"  Initial rows: {initial_count}")
+    report.append(f"  Final rows: {final_count}")
+    report.append(f"  Total removed: {total_removed} ({100*total_removed/initial_count:.2f}%)")
 
     # 7) Export
     df.to_csv(OUTPUT_PATH, index=False)
-    print(f"\nCSV nettoyé sauvegardé: {OUTPUT_PATH}")
-    print(f"Lignes finales: {final_count}")
+    print(f"\nCleaned CSV saved: {OUTPUT_PATH}")
+    print(f"Final rows: {final_count}")
 
     with open(REPORT_PATH, "w", encoding="utf-8") as f:
         f.write("\n".join(report) + "\n")
     
-    print(f"Rapport sauvegardé: {REPORT_PATH}\n")
+    print(f"Report saved: {REPORT_PATH}\n")
     print("="*60)
-    print("RAPPORT DE NETTOYAGE")
+    print("CLEANING REPORT")
     print("="*60)
     print("\n".join(report))
 
