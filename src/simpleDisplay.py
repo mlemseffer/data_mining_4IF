@@ -34,4 +34,4 @@ def generate_lyon_map(csv_path):
     print(f"Carte générée avec {len(df)} points nettoyés. Ouvrez 'lyon_tourism_map.html' dans votre navigateur.")
 
 if __name__ == "__main__":
-    generate_lyon_map('../data/flickr_data2.csv')
+    generate_lyon_map('../data/flickr_data2_cleaned.csv')
