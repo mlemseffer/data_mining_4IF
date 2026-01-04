@@ -7,14 +7,14 @@ def elbow_method(df, k_range=range(2, 21)):
     Méthode du coude pour déterminer le nombre optimal de clusters.
     
     Args:
-        df: DataFrame avec les colonnes ' lat' et ' long'
+        df: DataFrame avec les colonnes 'lat' et 'long'
         k_range: Range de nombres de clusters à tester (par défaut 2 à 20)
     
     Returns:
         dict: Dictionnaire avec 'k_values' et 'inertias'
     """
     # Sélection des coordonnées
-    coords = df[[' lat', ' long']]
+    coords = df[['lat', 'long']]
     
     print(f"Calcul de l'inertie pour {len(k_range)} valeurs de k...")
     
@@ -49,7 +49,7 @@ def elbow_method(df, k_range=range(2, 21)):
 def run_first_clustering(df, n_clusters=50):
     # 1. Sélection des colonnes géographiques
     # On travaille uniquement sur les positions GPS pour ce jalon
-    coords = df[[' lat', ' long']]
+    coords = df[['lat', 'long']]
     
     # 2. Initialisation et entraînement de l'algorithme
     kmeans = KMeans(n_clusters=n_clusters, init='k-means++', random_state=42)
@@ -79,8 +79,8 @@ def analyze_clusters(df):
     print("\nStatistiques par cluster:")
     cluster_stats = df.groupby('cluster_label').agg({
         'id': 'count',
-        ' lat': 'mean',
-        ' long': 'mean'
+        'lat': 'mean',
+        'long': 'mean'
     }).round(6)
     cluster_stats.columns = ['Nombre de photos', 'Latitude moyenne', 'Longitude moyenne']
     print(cluster_stats)
@@ -92,14 +92,14 @@ def evaluate_clustering_quality(df):
     Évalue la qualité du clustering avec le score de silhouette.
     
     Args:
-        df: DataFrame avec les colonnes ' lat', ' long' et 'cluster_label'
+        df: DataFrame avec les colonnes 'lat', 'long' et 'cluster_label'
     
     Returns:
         float: Score de silhouette moyen
     """
     from sklearn.metrics import silhouette_score
     
-    coords = df[[' lat', ' long']]
+    coords = df[['lat', 'long']]
     labels = df['cluster_label']
     
     silhouette_avg = silhouette_score(coords, labels, metric='euclidean')
@@ -118,7 +118,7 @@ def visualize_clusters_on_map(df, output_file='clusters_map.html', sample_size=1
     Visualise les clusters sur une carte interactive de Lyon.
     
     Args:
-        df: DataFrame avec les colonnes ' lat', ' long' et 'cluster_label'
+        df: DataFrame avec les colonnes 'lat', 'long' et 'cluster_label'
         output_file: Nom du fichier HTML de sortie
         sample_size: Nombre de points à afficher (pour la performance)
     """
@@ -142,7 +142,7 @@ def visualize_clusters_on_map(df, output_file='clusters_map.html', sample_size=1
     for idx, row in df_sample.iterrows():
         cluster_id = row['cluster_label']
         folium.CircleMarker(
-            location=[row[' lat'], row[' long']],
+            location=[row['lat'], row['long']],
             radius=3,
             color=colors[cluster_id % len(colors)],
             fill=True,
@@ -174,4 +174,4 @@ if __name__ == "__main__":
     silhouette = evaluate_clustering_quality(df_clustered)
     
     # Visualiser sur une carte
-    visualize_clusters_on_map(df_clustered, output_file='clusters_lyon.html', sample_size=2000)
+    visualize_clusters_on_map(df_clustered, output_file='../maps/clusters_lyon.html', sample_size=2000)
