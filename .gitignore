@@ -12,3 +12,9 @@ data
 # Ignorer tout le contenu du dossier data sauf .gitkeep
 data/*
 !data/.gitkeep
+
+# Ignorer le dossier maps
+maps/
+
+# Ignorer le dossier datz
+datz/
