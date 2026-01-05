@@ -4,6 +4,7 @@ src/clusters_lyon.html
 src/elbow_method.png
 src/k_distance_graph.png
 iris
+data
 
 data/lyon_tourism_map.html
 
@@ -11,4 +12,14 @@ data/lyon_tourism_map.html
 
 # Ignorer les fichiers de verrouillage LibreOffice
 .~lock.*#
-*.~lock.*
+*.~lock*
+
+# Ignorer tout le contenu du dossier data sauf .gitkeep
+data/*
+!data/.gitkeep
+
+# Ignorer le dossier maps
+maps/
+
+# Ignorer le dossier datz
+datz/
