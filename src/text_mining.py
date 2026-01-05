@@ -37,8 +37,12 @@ stop_words = {
     'les', 'leurs', 'quel', 'quels', 'quelle', 'quelles', 'sans', 'soi'
 }
 
-custom_stopwords = {'photo', 'picture', 'image', 'flickr', 'taken', 'nikon', 'canon', 'shot', 
-                   'camera', 'digital', 'photos', 'images', 'pictures', 'img', 'lyon', 'france', 'europe'}
+custom_stopwords = {
+    'camera', 'canon', 'des', 'digital', 'europe', 'flickr', 'flickriosapp', 
+    'flickrmobile', 'francia', 'france', 'image', 'images', 'img', 
+    'instagram', 'lyon', 'nikon', 'photo', 'photos', 'picture', 
+    'pictures', 'shot', 'taken', 'uploaded'
+}
 
 def simple_stem(word):
     """Stemming simple pour français et anglais"""
