@@ -1,6 +1,7 @@
 from sklearn.cluster import KMeans
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
 
 def elbow_method(df, k_range=range(2, 21)):
     """
@@ -113,6 +114,16 @@ def evaluate_clustering_quality(df):
     
     return silhouette_avg
 
+def ensure_directory_exists(directory):
+    """
+    Vérifie si un dossier existe, sinon le crée.
+    
+    Args:
+        directory (str): Chemin du dossier à vérifier/créer.
+    """
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+
 def visualize_clusters_on_map(df, output_file='clusters_map.html', sample_size=1000):
     """
     Visualise les clusters sur une carte interactive de Lyon.
@@ -125,6 +136,9 @@ def visualize_clusters_on_map(df, output_file='clusters_map.html', sample_size=1
     import folium
     
     print(f"\n=== Visualisation des clusters ===")
+    
+    # Créer le dossier pour la carte si nécessaire
+    ensure_directory_exists(os.path.dirname(output_file))
     
     # Créer une carte centrée sur Lyon
     m = folium.Map(location=[45.75, 4.85], zoom_start=12)
@@ -162,7 +176,7 @@ if __name__ == "__main__":
     
     # Déterminer le nombre optimal de clusters avec la méthode du coude
     print("=== Méthode du coude ===")
- #   elbow_results = elbow_method(df, k_range=range(2, 21))
+#    elbow_results = elbow_method(df, k_range=range(2, 21))
     
     # Utiliser un nombre de clusters choisi
     df_clustered = run_first_clustering(df, n_clusters=9)
