@@ -45,14 +45,10 @@ def main():
     print(f"Duplicates removed: {removed_duplicates}")
 
     # Supprimer les espaces dans toutes les colonnes pour éviter les doublons dus à des caractères invisibles
-    df = df.apply(lambda x: x.str.strip() if x.dtype == "object" else x)
-
-    # Réappliquer la suppression des doublons après nettoyage
-    before_duplicates = len(df)
-    df = df.drop_duplicates(keep="first")
+    df = df.apply(lambda x: x.str.strip() if x.dtype == "object" else x).drop_duplicates(keep="first")
     removed_duplicates = before_duplicates - len(df)
-    report.append(f"Duplicates removed after trimming spaces: {removed_duplicates}")
-    print(f"Duplicates removed after trimming spaces: {removed_duplicates}")
+    report.append(f"Duplicates removed after cleaning: {removed_duplicates}")
+    print(f"Duplicates removed after cleaning: {removed_duplicates}")
 
     # 2) Vérification de la présence des colonnes de dates
     # Les dates sont en colonnes séparées (année, mois, jour, heure, minute)
