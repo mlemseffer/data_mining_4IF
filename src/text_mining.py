@@ -1,5 +1,6 @@
 import re
 import pandas as pd
+import folium
 
 # Stopwords français et anglais (liste manuelle)
 stop_words = {
