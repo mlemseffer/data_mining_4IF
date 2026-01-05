@@ -3,7 +3,12 @@ src/lyon_tourism_map.html
 src/clusters_lyon.html
 src/elbow_method.png
 iris
+data
 
 # Ignorer les fichiers de verrouillage LibreOffice
 .~lock.*#
-*.~lock.*
+*.~lock*
+
+# Ignorer tout le contenu du dossier data sauf .gitkeep
+data/*
+!data/.gitkeep
