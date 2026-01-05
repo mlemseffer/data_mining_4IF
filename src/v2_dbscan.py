@@ -4,6 +4,7 @@ from sklearn.metrics import silhouette_score
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 def find_optimal_eps(df, min_samples=50):
     """
@@ -42,18 +43,17 @@ def find_optimal_eps(df, min_samples=50):
     plt.figure(figsize=(10, 6))
     plt.plot(range(len(k_distances_meters)), k_distances_meters, 'b-', linewidth=2)
     plt.axhline(y=np.percentile(k_distances_meters, 90), color='r', linestyle='--', alpha=0.5)
-    
     plt.xlabel('Points (triés par distance)', fontsize=12)
     plt.ylabel(f'Distance au {min_samples}ème voisin (Mètres)', fontsize=12)
     plt.title(f'K-distance Graph (Lyon) - k={min_samples}', fontsize=14, fontweight='bold')
     plt.grid(True, alpha=0.3)
-    
     # Zoomer sur la partie utile si nécessaire (on ignore les outliers extrêmes)
     plt.ylim(0, np.percentile(k_distances_meters, 98)) 
-    
     plt.tight_layout()
-    plt.savefig('k_distance_graph.png', dpi=150)
-    print("\n📊 Graphique sauvegardé : 'k_distance_graph.png'")
+    # Créer le dossier maps si besoin
+    os.makedirs('../maps', exist_ok=True)
+    plt.savefig('../maps/k_distance_graph.png', dpi=150)
+    print("\n📊 Graphique sauvegardé : '../maps/k_distance_graph.png'")
     plt.show()
     
     # 5. Aide au diagnostic
@@ -240,7 +240,7 @@ def analyze_dbscan_clusters(df):
         print("\nAucun cluster trouvé!")
         return None
 
-def visualize_dbscan_on_map(df, output_file='dbscan_clusters_map.html', sample_size=2000):
+def visualize_dbscan_on_map(df, output_file='../maps/dbscan_lyon.html', sample_size=2000):
     """
     Visualise les clusters DBSCAN sur une carte interactive.
     Le bruit est affiché en gris.
@@ -327,7 +327,7 @@ if __name__ == "__main__":
     cluster_stats = analyze_dbscan_clusters(df_clustered)
     
     # Étape 5: Visualiser sur une carte
-    visualize_dbscan_on_map(df_clustered, output_file='dbscan_lyon.html', sample_size=2000)
+    visualize_dbscan_on_map(df_clustered, output_file='../maps/dbscan_lyon.html', sample_size=2000)
     
     # Optionnel: Si vous voulez tester plusieurs valeurs d'eps autour du coude
     # Décommentez les lignes suivantes:
