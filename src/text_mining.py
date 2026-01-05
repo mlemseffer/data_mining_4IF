@@ -104,9 +104,119 @@ def preprocess_dataframe(df, text_cols=['tags', 'title']):
         df[f'{col}_tokens'] = df[col].apply(preprocess_text)
     return df
 
+
+def compute_tfidf_per_cluster(df, cluster_col, text_cols=['tags', 'title'], top_n=10):
+    """
+    Calcule le TF-IDF pour chaque cluster et retourne les mots les plus pertinents.
+    
+    Args:
+        df: DataFrame avec colonnes de texte tokenisé et labels de clusters
+        cluster_col: nom de la colonne contenant les labels de clusters
+        text_cols: colonnes de texte à analyser (doivent avoir des versions '_tokens')
+        top_n: nombre de mots les plus pertinents à retourner par cluster
+        
+    Returns:
+        dict: {cluster_id: [(mot, score_tfidf), ...]}
+    """
+    from collections import Counter
+    import math
+    
+    # Nombre total de clusters (documents)
+    n_clusters = df[cluster_col].nunique()
+    
+    # Pour chaque cluster, agréger tous les tokens
+    cluster_texts = {}
+    for cluster_id in df[cluster_col].unique():
+        cluster_df = df[df[cluster_col] == cluster_id]
+        all_tokens = []
+        for col in text_cols:
+            token_col = f'{col}_tokens'
+            if token_col in cluster_df.columns:
+                for tokens in cluster_df[token_col]:
+                    if isinstance(tokens, list):
+                        all_tokens.extend(tokens)
+        cluster_texts[cluster_id] = all_tokens
+    
+    # Calculer DF (document frequency) - dans combien de clusters apparaît chaque mot
+    word_df = Counter()
+    for cluster_id, tokens in cluster_texts.items():
+        unique_words = set(tokens)
+        for word in unique_words:
+            word_df[word] += 1
+    
+    # Calculer TF-IDF pour chaque cluster
+    cluster_tfidf = {}
+    for cluster_id, tokens in cluster_texts.items():
+        # TF: fréquence des mots dans ce cluster
+        tf = Counter(tokens)
+        total_words = len(tokens)
+        
+        # Calculer TF-IDF pour chaque mot
+        tfidf_scores = {}
+        for word, count in tf.items():
+            tf_normalized = count / total_words if total_words > 0 else 0
+            idf = math.log(n_clusters / word_df[word]) if word_df[word] > 0 else 0
+            tfidf_scores[word] = tf_normalized * idf
+        
+        # Trier et garder les top_n mots
+        top_words = sorted(tfidf_scores.items(), key=lambda x: x[1], reverse=True)[:top_n]
+        cluster_tfidf[cluster_id] = top_words
+    
+    return cluster_tfidf
+
+
+def display_cluster_keywords(cluster_tfidf, title="Mots-clés par cluster (TF-IDF)"):
+    """
+    Affiche les mots-clés les plus pertinents pour chaque cluster.
+    
+    Args:
+        cluster_tfidf: dict retourné par compute_tfidf_per_cluster
+        title: titre de l'affichage
+    """
+    print(f"\n{'='*60}")
+    print(title)
+    print('='*60)
+    
+    for cluster_id in sorted(cluster_tfidf.keys()):
+        print(f"\n[Cluster {cluster_id}]")
+        keywords = cluster_tfidf[cluster_id]
+        if keywords:
+            for i, (word, score) in enumerate(keywords, 1):
+                print(f"  {i}. {word:20s} (TF-IDF: {score:.4f})")
+        else:
+            print("  Aucun mot trouvé")
+    print('='*60)
+
+
 # Exemple d'utilisation
 if __name__ == '__main__':
-    # Charger un DataFrame exemple
-    df = pd.read_csv('../data/flickr_data2_hierarchical_sample.csv')
+    # Vérifier si le fichier avec clusters existe
+    import os
+    file_path = '../data/flickr_data2_hierarchical_sample.csv'
+    
+    if os.path.exists(file_path):
+        print(f"Chargement de {file_path}...")
+        df = pd.read_csv(file_path)
+    else:
+        print(f"Le fichier {file_path} n'existe pas.")
+        print("Veuillez d'abord exécuter hierarchical_clustering.py pour générer les clusters.")
+        print("\nUtilisation des données nettoyées sans clusters pour démo...")
+    
+    # Prétraiter les textes
+    print("Prétraitement des textes (tags et title)...")
     df = preprocess_dataframe(df, text_cols=['tags', 'title'])
-    print(df[['tags_tokens', 'title_tokens']].head())
+    
+    # Analyser les mots-clés pour le clustering hiérarchique (complete)
+    if 'cluster_complete' in df.columns:
+        print("\n=== Analyse TF-IDF pour clustering hiérarchique (complete) ===")
+        cluster_keywords = compute_tfidf_per_cluster(
+            df, 
+            cluster_col='cluster_complete', 
+            text_cols=['tags', 'title'], 
+            top_n=10
+        )
+        display_cluster_keywords(cluster_keywords, 
+                                title="Mots-clés par cluster - Hierarchical Complete")
+    else:
+        print("Colonne 'cluster_complete' non trouvée dans les données.")
+        print("Colonnes disponibles:", df.columns.tolist())
