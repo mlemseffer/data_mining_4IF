@@ -80,8 +80,8 @@ def main():
     # Charger les données nettoyées
     df = pd.read_csv('../data/flickr_data2_cleaned.csv')
 
-    # Limiter à un échantillon aléatoire de 1000 points pour éviter les problèmes de mémoire
-    sample_size = 1000
+    # Limiter à un échantillon aléatoire de 2000 points pour éviter les problèmes de mémoire
+    sample_size = 2000
     if len(df) > sample_size:
         df_sample = df.sample(n=sample_size, random_state=42)
         print(f"Clustering hiérarchique sur un échantillon de {sample_size} points (sur {len(df)})")
@@ -95,7 +95,7 @@ def main():
     # Tester plusieurs types de linkage et visualiser sur carte
     for link in ['complete', 'average', 'single']:
         print(f'=== Linkage: {link} ===')
-        model, fig = hierarchical_clustering(X, labels, metric='euclidean', linkage=link, n_clusters=9, dist_thres=None)
+        model, fig = hierarchical_clustering(X, labels, metric='euclidean', linkage=link, n_clusters=20, dist_thres=None)
         df_sample[f'cluster_{link}'] = model.labels_
         silhouette_avg = silhouette_score(X, model.labels_, metric='euclidean')
         sample_silhouette_values = silhouette_samples(X, model.labels_, metric='euclidean')
@@ -106,8 +106,8 @@ def main():
         visualize_clusters_on_map(df_sample, cluster_col=f'cluster_{link}', output_file=f'../maps/clusters_lyon_hierarchical_{link}.html', sample_size=1000)
 
     # Sauvegarder le DataFrame échantillon avec les clusters
-    # df_sample.to_csv('../data/flickr_data2_hierarchical_sample.csv', index=False)
-    # print('Résultats sauvegardés dans ../data/flickr_data2_hierarchical_sample.csv')
+    df_sample.to_csv('../data/flickr_data2_hierarchical_sample.csv', index=False)
+    print('Résultats sauvegardés dans ../data/flickr_data2_hierarchical_sample.csv')
 
 
 if __name__ == '__main__':
