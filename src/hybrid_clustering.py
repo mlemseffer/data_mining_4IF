@@ -16,7 +16,7 @@ def hybrid_clustering(df, n_clusters=10, spatial_weight=0.7, text_weight=0.3, ra
     Clustering hybride combinant position géographique et contenu textuel.
     
     Args:
-        df: DataFrame avec lat, long, tags, title
+        df: DataFrame avec lat, long, text_merged
         n_clusters: nombre de clusters souhaités
         spatial_weight: poids des features spatiales (0-1)
         text_weight: poids des features textuelles (0-1)
@@ -37,10 +37,10 @@ def hybrid_clustering(df, n_clusters=10, spatial_weight=0.7, text_weight=0.3, ra
     print(f"  - Poids textuel: {text_weight:.1%}")
     print(f"  - Nombre de photos: {len(df)}")
     
-    # 1. Prétraiter les textes si pas déjà fait
-    if 'tags_tokens' not in df.columns or 'title_tokens' not in df.columns:
-        print("\nPrétraitement des textes...")
-        df = preprocess_dataframe(df, text_cols=['tags', 'title'])
+    # 1. Prétraiter le texte si text_merged pas déjà tokenisé
+    if 'text_merged_tokens' not in df.columns:
+        print("\nPrétraitement du texte...")
+        df = preprocess_dataframe(df)
     
     # 2. Features spatiales normalisées
     print("\nExtraction des features spatiales...")
@@ -49,19 +49,16 @@ def hybrid_clustering(df, n_clusters=10, spatial_weight=0.7, text_weight=0.3, ra
     spatial_scaled = scaler.fit_transform(spatial_features)
     print(f"  - Features spatiales: {spatial_scaled.shape}")
     
-    # 3. Features textuelles (TF-IDF)
+    # 3. Features textuelles (TF-IDF) depuis text_merged
     print("\nExtraction des features textuelles (TF-IDF)...")
-    # Combiner tags et title en un seul texte
-    df['combined_text'] = df.apply(
-        lambda row: ' '.join(
-            (row['tags_tokens'] if isinstance(row['tags_tokens'], list) else []) +
-            (row['title_tokens'] if isinstance(row['title_tokens'], list) else [])
-        ),
-        axis=1
-    )
+    
+    # Vérifier que text_merged existe
+    if 'text_merged' not in df.columns:
+        print("  ⚠ Colonne text_merged absente, utilisation de texte vide")
+        df['text_merged'] = ""
     
     # Filtrer les textes vides
-    valid_texts = df['combined_text'].apply(lambda x: len(x.strip()) > 0)
+    valid_texts = df['text_merged'].apply(lambda x: len(str(x).strip()) > 0)
     print(f"  - Textes valides: {valid_texts.sum()} / {len(df)}")
     
     # Vectorisation TF-IDF
@@ -71,7 +68,7 @@ def hybrid_clustering(df, n_clusters=10, spatial_weight=0.7, text_weight=0.3, ra
         max_df=0.7         # Mot ne doit pas apparaître dans plus de 70% des documents
     )
     
-    text_features = vectorizer.fit_transform(df['combined_text']).toarray()
+    text_features = vectorizer.fit_transform(df['text_merged'].fillna('')).toarray()
     print(f"  - Features textuelles: {text_features.shape}")
     print(f"  - Vocabulaire: {len(vectorizer.get_feature_names_out())} mots")
     
@@ -150,7 +147,6 @@ def visualize_hybrid_clusters(df, output_file='../maps/clusters_hybrid.html', sa
     cluster_keywords = compute_tfidf_per_cluster(
         df,
         cluster_col='cluster_hybrid',
-        text_cols=['tags', 'title'],
         top_n=3
     )
     
@@ -216,7 +212,7 @@ def analyze_cluster_content(df):
     Analyse le contenu textuel de chaque cluster avec TF-IDF.
     
     Args:
-        df: DataFrame avec 'cluster_hybrid' et tokens preprocessés
+        df: DataFrame avec 'cluster_hybrid' et text_merged
     """
     print(f"\n{'='*70}")
     print("ANALYSE DU CONTENU TEXTUEL PAR CLUSTER (TF-IDF)")
@@ -225,7 +221,6 @@ def analyze_cluster_content(df):
     cluster_keywords = compute_tfidf_per_cluster(
         df,
         cluster_col='cluster_hybrid',
-        text_cols=['tags', 'title'],
         top_n=10
     )
     
@@ -253,7 +248,6 @@ def visualize_spatial_clusters(df, output_file='../maps/clusters_spatial.html', 
     cluster_keywords = compute_tfidf_per_cluster(
         df,
         cluster_col='cluster_spatial',
-        text_cols=['tags', 'title'],
         top_n=3
     )
     
