@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-def find_optimal_eps(df, min_samples=50):
+def find_optimal_eps(df, min_samples=15):
     """
     Trouve la valeur optimale d'eps en utilisant la méthode du k-distance.
     Affiche le graphique en mètres pour une interprétation facile.
@@ -22,8 +22,10 @@ def find_optimal_eps(df, min_samples=50):
     coords = df[['lat', 'long']].values
     coords_rad = np.radians(coords)
     
-    print(f"=== Recherche de eps optimal ===")
-    print(f"Nombre de points analysés: {len(coords)}")
+    print(f"\n{'='*70}")
+    print("RECHERCHE DE EPS OPTIMAL (K-DISTANCE)")
+    print(f"{'='*70}")
+    print(f"Nombre de points analysés: {len(coords):,}")
     print(f"k (min_samples): {min_samples}")
     
     # 2. Calcul des plus proches voisins avec la métrique Haversine
@@ -54,7 +56,7 @@ def find_optimal_eps(df, min_samples=50):
     os.makedirs('../maps', exist_ok=True)
     plt.savefig('../maps/k_distance_graph.png', dpi=150)
     print("\n📊 Graphique sauvegardé : '../maps/k_distance_graph.png'")
-    plt.show()
+    plt.close()
     
     # 5. Aide au diagnostic
     print(f"\n📊 Analyse des distances (en MÈTRES) :")
@@ -63,15 +65,15 @@ def find_optimal_eps(df, min_samples=50):
         val_m = np.percentile(k_distances_meters, p)
         print(f"   Percentile {p:2d}%: {val_m:.2f} mètres")
     
-    # 6. Suggestion
-    # Le percentile 90 est souvent proche du "coude"
-    suggested_eps_rad = np.percentile(k_distances_rad, 75)
+    # 6. Suggestion (percentile 80 souvent optimal)
+    suggested_eps_rad = np.percentile(k_distances_rad, 80)
     suggested_eps_m = suggested_eps_rad * 6371000
     
-    print(f"\n💡 Valeur suggérée au percentile 75 : {suggested_eps_m:.1f} mètres")
+    print(f"\n💡 Valeur suggérée (percentile 80): {suggested_eps_m:.1f} mètres")
     print(f"   Soit eps = {suggested_eps_rad:.8f} radians")
-    print(f"   Si le cluster est trop grand (toute la ville) -> Baissez cette valeur (ex: 100m)")
-    print(f"   Si trop de bruit (points isolés) -> Augmentez min_samples")
+    print(f"   Si trop de clusters -> Augmentez eps")
+    print(f"   Si trop de bruit -> Augmentez min_samples")
+    print(f"{'='*70}\n")
     
     return suggested_eps_rad
 
@@ -145,7 +147,7 @@ def test_dbscan_parameters(df, eps_range, min_samples_range):
     
     return results_df
 
-def run_dbscan(df, eps, min_samples=4, metric='haversine'):
+def run_dbscan(df, eps, min_samples=15, metric='haversine'):
     """
     Applique DBSCAN avec les paramètres donnés.
     
@@ -160,21 +162,28 @@ def run_dbscan(df, eps, min_samples=4, metric='haversine'):
     """
     coords = df[['lat', 'long']].values
     
-    print(f"\n=== Application de DBSCAN ===")
+    print(f"\n{'='*70}")
+    print(f"CLUSTERING DBSCAN SPATIAL")
+    print(f"{'='*70}")
     
     if metric == 'haversine':
         # Convertir en radians pour haversine
         coords_rad = np.radians(coords)
-        eps_km = eps * 6371  # Conversion pour affichage
-        print(f"eps={eps:.6f} radians (≈ {eps_km:.3f} km), min_samples={min_samples}")
-        print(f"Métrique: haversine (distance géodésique)")
+        eps_m = eps * 6371000  # Conversion en mètres
+        print(f"Paramètres:")
+        print(f"  - Eps: {eps:.8f} radians ({eps_m:.1f} mètres)")
+        print(f"  - Min samples: {min_samples}")
+        print(f"  - Métrique: Haversine (distances GPS réelles)")
         
+        print(f"\nClustering DBSCAN...")
         # Apply DBSCAN
         dbscan = DBSCAN(eps=eps, min_samples=min_samples, metric='haversine')
         df['cluster_label'] = dbscan.fit_predict(coords_rad)
     else:
-        print(f"eps={eps:.6f} degrés, min_samples={min_samples}")
-        print(f"Métrique: {metric}")
+        print(f"Paramètres:")
+        print(f"  - Eps: {eps:.6f}")
+        print(f"  - Min samples: {min_samples}")
+        print(f"  - Métrique: {metric}")
         
         # Apply DBSCAN
         dbscan = DBSCAN(eps=eps, min_samples=min_samples, metric=metric)
@@ -184,60 +193,102 @@ def run_dbscan(df, eps, min_samples=4, metric='haversine'):
     n_clusters = len(set(df['cluster_label'])) - (1 if -1 in df['cluster_label'].values else 0)
     n_noise = (df['cluster_label'] == -1).sum()
     
-    print(f"✅ Clustering terminé:")
-    print(f"   Nombre de clusters: {n_clusters}")
-    print(f"   Points de bruit: {n_noise} ({n_noise/len(df)*100:.2f}%)")
-    print(f"   Points dans des clusters: {len(df) - n_noise} ({(len(df)-n_noise)/len(df)*100:.2f}%)")
+    print(f"\nRésultats:")
+    print(f"  - Clusters trouvés: {n_clusters}")
+    print(f"  - Points de bruit: {n_noise:,} ({n_noise/len(df)*100:.1f}%)")
+    print(f"  - Points dans clusters: {len(df) - n_noise:,} ({(len(df)-n_noise)/len(df)*100:.1f}%)")
     
-    # Avertissement si trop de clusters
+    # Silhouette score
+    if n_clusters > 1:
+        mask_clustered = df['cluster_label'] != -1
+        if mask_clustered.sum() > 0:
+            try:
+                silhouette = silhouette_score(coords_rad if metric == 'haversine' else coords, 
+                                             df.loc[mask_clustered, 'cluster_label'],
+                                             metric=metric)
+                print(f"  - Score de silhouette: {silhouette:.3f}")
+            except:
+                pass
+    
+    # 8. Statistiques par cluster
+    print(f"\n{'='*70}")
+    print("STATISTIQUES PAR CLUSTER")
+    print(f"{'='*70}")
+    print(f"{'Cluster':<10} {'Taille':<10} {'Lat moy':<12} {'Long moy':<12} {'% du total':<12}")
+    print('-'*70)
+    
+    if n_noise > 0:
+        percentage = (n_noise / len(df)) * 100
+        print(f"{'BRUIT (-1)':<10} {n_noise:<10} {'-':<12} {'-':<12} {percentage:<12.1f}%")
+    
+    for cluster_id in sorted([c for c in set(df['cluster_label']) if c != -1]):
+        cluster_df = df[df['cluster_label'] == cluster_id]
+        size = len(cluster_df)
+        lat_mean = cluster_df['lat'].mean()
+        long_mean = cluster_df['long'].mean()
+        percentage = (size / len(df)) * 100
+        print(f"{cluster_id:<10} {size:<10} {lat_mean:<12.4f} {long_mean:<12.4f} {percentage:<12.1f}%")
+    
+    print('-'*70)
+    
+    cluster_sizes = df[df['cluster_label'] != -1]['cluster_label'].value_counts()
+    if len(cluster_sizes) > 0:
+        print(f"Taille min (hors bruit): {cluster_sizes.min()}")
+        print(f"Taille max (hors bruit): {cluster_sizes.max()}")
+        print(f"Taille moyenne: {cluster_sizes.mean():.1f}")
+        print(f"Écart-type: {cluster_sizes.std():.1f}")
+    
+    print(f"{'='*70}\n")
+    
+    # Avertissement si résultats suspects
     if n_clusters > 100:
-        print(f"\n⚠️  ATTENTION: Nombre de clusters très élevé ({n_clusters})!")
-        print(f"   → Augmentez eps pour avoir moins de clusters")
-        print(f"   → Essayez par exemple: eps * 2 ou eps * 5")
+        print(f"⚠️  ATTENTION: Nombre de clusters très élevé ({n_clusters})!")
+        print(f"   → Augmentez eps pour fusionner les clusters")
     elif n_clusters < 3:
-        print(f"\n⚠️  ATTENTION: Très peu de clusters ({n_clusters})")
-        print(f"   → Diminuez eps pour avoir plus de clusters")
-        print(f"   → Essayez par exemple: eps / 2 ou eps / 5")
+        print(f"⚠️  ATTENTION: Très peu de clusters ({n_clusters})")
+        print(f"   → Diminuez eps pour détecter plus de zones\n")
     
     return df
 
 def analyze_dbscan_clusters(df):
     """
-    Analyse les résultats du clustering DBSCAN.
+    Analyse détaillée des résultats du clustering DBSCAN.
     
     Args:
         df: DataFrame avec la colonne 'cluster_label'
     """
-    print("\n=== Analyse des clusters DBSCAN ===")
+    print(f"\n{'='*70}")
+    print("ANALYSE DÉTAILLÉE DES CLUSTERS")
+    print(f"{'='*70}")
     
     # Séparer le bruit des clusters
     noise = df[df['cluster_label'] == -1]
     clustered = df[df['cluster_label'] != -1]
     
-    print(f"\nPoints de bruit: {len(noise)} ({len(noise)/len(df)*100:.2f}%)")
-    print(f"Points clusterisés: {len(clustered)} ({len(clustered)/len(df)*100:.2f}%)")
+    print(f"\nRépartition globale:")
+    print(f"  - Points de bruit: {len(noise):,} ({len(noise)/len(df)*100:.1f}%)")
+    print(f"  - Points clusterisés: {len(clustered):,} ({len(clustered)/len(df)*100:.1f}%)")
     
     if len(clustered) > 0:
         # Nombre de photos par cluster
         cluster_counts = clustered['cluster_label'].value_counts().sort_index()
-        print(f"\nNombre de clusters: {len(cluster_counts)}")
-        print("\nNombre de photos par cluster:")
-        for cluster_id, count in cluster_counts.items():
-            print(f"  Cluster {cluster_id}: {count:,} photos")
+        print(f"  - Nombre de clusters: {len(cluster_counts)}")
         
-        # Statistiques par cluster
-        print("\nStatistiques par cluster:")
-        cluster_stats = clustered.groupby('cluster_label').agg({
-            'id': 'count',
-            'lat': ['mean', 'std'],
-            'long': ['mean', 'std']
-        }).round(6)
-        cluster_stats.columns = ['Nombre', 'Lat_mean', 'Lat_std', 'Long_mean', 'Long_std']
-        print(cluster_stats)
+        # Top 10 clusters par taille
+        print(f"\nTop 10 clusters par taille:")
+        top_clusters = cluster_counts.head(10)
+        for cluster_id, count in top_clusters.items():
+            cluster_df = df[df['cluster_label'] == cluster_id]
+            lat_mean = cluster_df['lat'].mean()
+            long_mean = cluster_df['long'].mean()
+            print(f"  Cluster {cluster_id:3d}: {count:5,} photos - Centre: ({lat_mean:.4f}, {long_mean:.4f})")
         
-        return cluster_stats
+        print(f"{'='*70}\n")
+        
+        return clustered
     else:
-        print("\nAucun cluster trouvé!")
+        print("\n⚠️  Aucun cluster trouvé!")
+        print(f"{'='*70}\n")
         return None
 
 def visualize_dbscan_on_map(df, output_file='../maps/dbscan_lyon.html', sample_size=2000):
@@ -252,10 +303,14 @@ def visualize_dbscan_on_map(df, output_file='../maps/dbscan_lyon.html', sample_s
     """
     import folium
     
-    print(f"\n=== Visualisation des clusters DBSCAN ===")
+    print(f"\n{'='*70}")
+    print("VISUALISATION DES CLUSTERS SUR CARTE")
+    print(f"{'='*70}")
     
     # Créer une carte centrée sur Lyon
-    m = folium.Map(location=[45.75, 4.85], zoom_start=12)
+    center_lat = df['lat'].mean()
+    center_long = df['long'].mean()
+    m = folium.Map(location=[center_lat, center_long], zoom_start=12)
     
     # Couleurs pour les clusters
     colors = ['red', 'blue', 'green', 'purple', 'orange', 
@@ -264,74 +319,105 @@ def visualize_dbscan_on_map(df, output_file='../maps/dbscan_lyon.html', sample_s
               'brown', 'black', 'white']
     
     # Échantillonner
-    df_sample = df.sample(min(sample_size, len(df)))
+    df_sample = df.sample(min(sample_size, len(df)), random_state=42)
+    print(f"Affichage de {len(df_sample):,} points sur {len(df):,}")
     
-    # Ajouter les points
-    for idx, row in df_sample.iterrows():
-        cluster_id = row['cluster_label']
-        
-        # Bruit en gris
-        if cluster_id == -1:
-            color = 'gray'
-            popup_text = "Bruit"
-        else:
-            color = colors[cluster_id % len(colors)]
-            popup_text = f"Cluster {cluster_id}"
-        
+    # Ajouter les points de bruit en gris
+    df_noise = df_sample[df_sample['cluster_label'] == -1]
+    for idx, row in df_noise.iterrows():
+        folium.CircleMarker(
+            location=[row['lat'], row['long']],
+            radius=2,
+            color='gray',
+            fill=True,
+            fillColor='gray',
+            fillOpacity=0.3,
+            popup="Bruit (outlier)"
+        ).add_to(m)
+    
+    # Ajouter les points colorés par cluster
+    df_clustered = df_sample[df_sample['cluster_label'] != -1]
+    for idx, row in df_clustered.iterrows():
+        cluster_id = int(row['cluster_label'])
+        color = colors[cluster_id % len(colors)]
         folium.CircleMarker(
             location=[row['lat'], row['long']],
             radius=3,
             color=color,
             fill=True,
             fillColor=color,
-            fillOpacity=0.6,
-            popup=popup_text
+            fillOpacity=0.7,
+            popup=f"Cluster {cluster_id}"
+        ).add_to(m)
+    
+    # Ajouter les centres des clusters avec marqueurs
+    for cluster_id in sorted([c for c in df['cluster_label'].unique() if c != -1]):
+        cluster_df = df[df['cluster_label'] == cluster_id]
+        center_lat = cluster_df['lat'].mean()
+        center_long = cluster_df['long'].mean()
+        
+        popup_html = f"""<b>Cluster {cluster_id}</b><br>
+        Taille: {len(cluster_df):,} photos<br>
+        Lat: {center_lat:.4f}<br>
+        Long: {center_long:.4f}
+        """
+        
+        folium.Marker(
+            location=[center_lat, center_long],
+            popup=folium.Popup(popup_html, max_width=250),
+            icon=folium.Icon(color=colors[cluster_id % len(colors)], icon='info-sign')
         ).add_to(m)
     
     m.save(output_file)
-    print(f"📍 Carte sauvegardée dans '{output_file}'")
-    print(f"   {len(df_sample):,} points affichés sur {len(df):,} total")
-    print(f"   Points gris = bruit (outliers)")
+    print(f"Carte sauvegardée: {output_file}")
+    print(f"{'='*70}\n")
 
 # Exemple d'usage
 if __name__ == "__main__":
-    df = pd.read_csv('../data/flickr_data2_cleaned.csv')
-
-    # 1. On arrondit pour créer une "grille" d'environ 11 mètres (4 décimales)
-    df['lat_grid'] = df['lat'].round(4)
-    df['long_grid'] = df['long'].round(4)
-
-    # 2. On ne garde qu'une photo par utilisateur par case de la grille
-    df_clean = df.drop_duplicates(subset=['user', 'lat_grid', 'long_grid'],keep='first')
-
-    print(f"Nettoyage terminé : {len(df)} photos -> {len(df_clean)} photos.")
+    print("\n" + "="*70)
+    print(" "*20 + "CLUSTERING DBSCAN - LYON")
+    print("="*70 + "\n")
     
-    # Paramètre fixe selon le notebook
-    min_samples = 4
+    # Chargement des données
+    print("Chargement des données...")
+    df = pd.read_csv('../data/flickr_data2_cleaned.csv')
+    print(f"Données chargées: {len(df):,} photos")
+    
+    # Échantillonnage pour performance
+    sample_size = 5000
+    if len(df) > sample_size:
+        print(f"Échantillonnage de {sample_size:,} photos pour le clustering...")
+        df = df.sample(n=sample_size, random_state=42)
+    
+    # Paramètres optimisés
+    min_samples = 15  # Plus robuste que 4
     
     # Étape 1: Trouver eps optimal avec k-distance graph
-    print("=== Étape 1: Recherche de eps optimal ===")
     suggested_eps = find_optimal_eps(df, min_samples=min_samples)
     
-    # Étape 2: Choisir eps à partir du graphique
-    # Regardez le graphique k_distance_graph.png et choisissez la valeur au "coude"
-    # Exemple: si le coude est à 0.003, utilisez cette valeur
-    best_eps = suggested_eps  # Ou ajustez manuellement après avoir vu le graphique
-
-    print(f"\n� Utilisation de eps={best_eps:.6f} avec min_samples={min_samples}")
+    # Étape 2: Utiliser eps suggéré (ou ajuster manuellement si nécessaire)
+    best_eps = suggested_eps
     
     # Étape 3: Appliquer DBSCAN
     df_clustered = run_dbscan(df, eps=best_eps, min_samples=min_samples)
     
     # Étape 4: Analyser les résultats
-    cluster_stats = analyze_dbscan_clusters(df_clustered)
+    clustered_data = analyze_dbscan_clusters(df_clustered)
     
     # Étape 5: Visualiser sur une carte
     visualize_dbscan_on_map(df_clustered, output_file='../maps/dbscan_lyon.html', sample_size=2000)
     
-    # Optionnel: Si vous voulez tester plusieurs valeurs d'eps autour du coude
-    # Décommentez les lignes suivantes:
-    # print("\n=== Test de valeurs d'eps autour du coude ===")
+    # Étape 6: Sauvegarder les résultats
+    output_file = '../data/flickr_data2_dbscan_clustering.csv'
+    df_clustered.to_csv(output_file, index=False)
+    print(f"Résultats sauvegardés: {output_file}\n")
+    
+    # Optionnel: Test de différents paramètres
+    # Décommentez pour tester plusieurs valeurs d'eps:
+    # print("\n" + "="*70)
+    # print("TEST DE PARAMÈTRES")
+    # print("="*70)
     # eps_range = [best_eps * 0.5, best_eps * 0.75, best_eps, best_eps * 1.25, best_eps * 1.5]
     # results = test_dbscan_parameters(df, eps_range, [min_samples])
-    # results.to_csv('dbscan_parameter_tests.csv', index=False)
+    # results.to_csv('../data/dbscan_parameter_tests.csv', index=False)
+    # print(f"\nRésultats des tests sauvegardés: '../data/dbscan_parameter_tests.csv'\n")
