@@ -166,6 +166,11 @@ def run_dbscan(df, eps, min_samples=15, metric='haversine'):
     print(f"CLUSTERING DBSCAN SPATIAL")
     print(f"{'='*70}")
     
+    print(f"\n--- Paramètres DBSCAN utilisés ---")
+    print(f"eps = {eps:.8f} (radians, soit {eps * 6371000:.1f} mètres)")
+    print(f"min_samples = {min_samples}")
+    print(f"metric = {metric}")
+    
     if metric == 'haversine':
         # Convertir en radians pour haversine
         coords_rad = np.radians(coords)
