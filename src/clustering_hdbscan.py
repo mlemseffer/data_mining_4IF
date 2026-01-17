@@ -15,6 +15,7 @@ import hdbscan
 # Import des fonctions de preprocessing depuis text_mining
 from text_mining import preprocess_dataframe, compute_tfidf_per_cluster, display_cluster_keywords
 
+from visualize_on_map import visualize_clusters_on_map
 
 def hdbscan_clustering(df, min_cluster_size=50, min_samples=10, spatial_weight=0.7, text_weight=0.3):
     """
@@ -28,7 +29,7 @@ def hdbscan_clustering(df, min_cluster_size=50, min_samples=10, spatial_weight=0
         text_weight: poids des features textuelles (0-1)
         
     Returns:
-        df: DataFrame avec colonne 'cluster_hdbscan' ajoutée
+        df: DataFrame avec colonne 'cluster_label' ajoutée
         clusterer: modèle HDBSCAN entraîné
         vectorizer: TfidfVectorizer utilisé
         feature_info: dict avec informations sur les features
@@ -108,7 +109,7 @@ def hdbscan_clustering(df, min_cluster_size=50, min_samples=10, spatial_weight=0
     )
     
     cluster_labels = clusterer.fit_predict(combined_features)
-    df['cluster_hdbscan'] = cluster_labels
+    df['cluster_label'] = cluster_labels
     
     # 6. Statistiques de clustering
     n_clusters = len(set(cluster_labels)) - (1 if -1 in cluster_labels else 0)
@@ -143,7 +144,7 @@ def hdbscan_clustering(df, min_cluster_size=50, min_samples=10, spatial_weight=0
     
     # Afficher les clusters
     for cluster_id in sorted([c for c in set(cluster_labels) if c != -1]):
-        cluster_df = df[df['cluster_hdbscan'] == cluster_id]
+        cluster_df = df[df['cluster_label'] == cluster_id]
         size = len(cluster_df)
         lat_mean = cluster_df['lat'].mean()
         long_mean = cluster_df['long'].mean()
@@ -153,7 +154,7 @@ def hdbscan_clustering(df, min_cluster_size=50, min_samples=10, spatial_weight=0
     print('-'*70)
     
     # Stats sur les clusters (hors bruit)
-    cluster_sizes = df[df['cluster_hdbscan'] != -1]['cluster_hdbscan'].value_counts()
+    cluster_sizes = df[df['cluster_label'] != -1]['cluster_label'].value_counts()
     if len(cluster_sizes) > 0:
         print(f"Taille min (hors bruit): {cluster_sizes.min()}")
         print(f"Taille max (hors bruit): {cluster_sizes.max()}")
@@ -175,127 +176,19 @@ def hdbscan_clustering(df, min_cluster_size=50, min_samples=10, spatial_weight=0
     
     return df, clusterer, vectorizer, feature_info
 
-
-def visualize_hdbscan_clusters(df, output_file='../maps/clusters_hdbscan.html', sample_size=2000, show_keywords=True):
-    """
-    Visualise les clusters HDBSCAN sur une carte interactive de Lyon.
-    
-    Args:
-        df: DataFrame avec les colonnes 'lat', 'long' et 'cluster_hdbscan'
-        output_file: Nom du fichier HTML de sortie
-        sample_size: Nombre de points à afficher (pour la performance)
-        show_keywords: Si True, affiche les mots-clés TF-IDF (clustering hybride uniquement)
-    """
-    print(f"\n{'='*70}")
-    print("VISUALISATION DES CLUSTERS SUR CARTE")
-    print(f"{'='*70}")
-    
-    # Calculer les mots-clés UNIQUEMENT si demandé (clustering hybride)
-    cluster_keywords = {}
-    if show_keywords and 'text_merged' in df.columns:
-        print("Calcul des mots-clés TF-IDF par cluster...")
-        df_clustered = df[df['cluster_hdbscan'] != -1].copy()
-        
-        if len(df_clustered) > 0:
-            cluster_keywords = compute_tfidf_per_cluster(
-                df_clustered,
-                cluster_col='cluster_hdbscan',
-                top_n=3
-            )
-    else:
-        print("Mode spatial pur: pas d'analyse textuelle")
-    
-    # Créer la carte centrée sur Lyon
-    center_lat = df['lat'].mean()
-    center_long = df['long'].mean()
-    m = folium.Map(location=[center_lat, center_long], zoom_start=12)
-    
-    # Couleurs pour les clusters
-    colors = ['red', 'blue', 'green', 'purple', 'orange', 
-              'darkred', 'lightred', 'beige', 'darkblue', 'darkgreen',
-              'cadetblue', 'darkpurple', 'pink', 'lightblue', 'lightgreen',
-              'gray', 'black', 'lightgray', 'brown', 'cyan']
-    
-    # Échantillonner si trop de points
-    df_sample = df.sample(min(sample_size, len(df)), random_state=42)
-    
-    print(f"Affichage de {len(df_sample):,} points sur {len(df):,}")
-    
-    # Ajouter les points de bruit en gris
-    df_noise = df_sample[df_sample['cluster_hdbscan'] == -1]
-    for idx, row in df_noise.iterrows():
-        folium.CircleMarker(
-            location=[row['lat'], row['long']],
-            radius=2,
-            color='gray',
-            fill=True,
-            fillColor='gray',
-            fillOpacity=0.3,
-            popup="Bruit (outlier)"
-        ).add_to(m)
-    
-    # Ajouter les points colorés par cluster
-    df_clustered_sample = df_sample[df_sample['cluster_hdbscan'] != -1]
-    for idx, row in df_clustered_sample.iterrows():
-        cluster_id = int(row['cluster_hdbscan'])
-        folium.CircleMarker(
-            location=[row['lat'], row['long']],
-            radius=3,
-            color=colors[cluster_id % len(colors)],
-            fill=True,
-            fillColor=colors[cluster_id % len(colors)],
-            fillOpacity=0.7,
-            popup=f"Cluster {cluster_id}"
-        ).add_to(m)
-    
-    # Ajouter les centres des clusters
-    for cluster_id in sorted([c for c in df['cluster_hdbscan'].unique() if c != -1]):
-        cluster_df = df[df['cluster_hdbscan'] == cluster_id]
-        center_lat = cluster_df['lat'].mean()
-        center_long = cluster_df['long'].mean()
-        
-        # Récupérer les 3 mots-clés les plus pertinents (si disponibles)
-        keywords = cluster_keywords.get(cluster_id, [])
-        
-        if keywords:
-            keywords_text = '<br>'.join([f"{i+1}. {word}" for i, (word, score) in enumerate(keywords)])
-            popup_html = f"""<b>Cluster {cluster_id}</b><br>
-            Taille: {len(cluster_df)} photos<br>
-            <br><b>Mots-clés:</b><br>
-            {keywords_text}
-            """
-        else:
-            popup_html = f"""<b>Cluster {cluster_id}</b><br>
-            Taille: {len(cluster_df)} photos<br>
-            Lat: {center_lat:.4f}<br>
-            Long: {center_long:.4f}
-            """
-        
-        folium.Marker(
-            location=[center_lat, center_long],
-            popup=folium.Popup(popup_html, max_width=250),
-            icon=folium.Icon(color=colors[cluster_id % len(colors)], icon='info-sign')
-        ).add_to(m)
-    
-    # Sauvegarder
-    m.save(output_file)
-    print(f"Carte sauvegardée: {output_file}")
-    print(f"{'='*70}\n")
-
-
 def analyze_cluster_content(df):
     """
     Analyse le contenu textuel de chaque cluster avec TF-IDF.
     
     Args:
-        df: DataFrame avec 'cluster_hdbscan' et text_merged
+        df: DataFrame avec 'cluster_label' et text_merged
     """
     print(f"\n{'='*70}")
     print("ANALYSE DU CONTENU TEXTUEL PAR CLUSTER (TF-IDF)")
     print(f"{'='*70}")
     
     # Analyser seulement les vrais clusters (pas le bruit)
-    df_clustered = df[df['cluster_hdbscan'] != -1].copy()
+    df_clustered = df[df['cluster_label'] != -1].copy()
     
     if len(df_clustered) == 0:
         print("Aucun cluster trouvé (tous les points sont du bruit)")
@@ -303,7 +196,7 @@ def analyze_cluster_content(df):
     
     cluster_keywords = compute_tfidf_per_cluster(
         df_clustered,
-        cluster_col='cluster_hdbscan',
+        cluster_col='cluster_label',
         top_n=10
     )
     
@@ -379,22 +272,22 @@ def compare_hdbscan_vs_hybrid(df, min_cluster_size=50, min_samples=15):
     print("\nGénération de la carte pour clustering spatial...")
     # Créer une copie temporaire pour la visualisation
     df_temp = df.copy()
-    df_temp['cluster_hdbscan'] = df_temp['cluster_spatial_hdbscan']
-    visualize_hdbscan_clusters(
+    df_temp['cluster_label'] = df_temp['cluster_spatial_hdbscan']
+    visualize_clusters_on_map(
         df_temp,
         output_file='../maps/clusters_hdbscan_spatial.html',
-        show_keywords=False  # Pas de mots-clés pour spatial pur
+        show_keywords=True  # Pas de mots-clés pour spatial pur
     )
     
     # Statistiques
-    if 'cluster_hdbscan' in df.columns and 'cluster_spatial_hdbscan' in df.columns:
+    if 'cluster_label' in df.columns and 'cluster_spatial_hdbscan' in df.columns:
         print(f"\n{'='*70}")
         print("RÉSULTATS DE COMPARAISON")
         print(f"{'='*70}")
         
         # Compter clusters et bruit
-        hybrid_clusters = len(set(df['cluster_hdbscan'])) - (1 if -1 in df['cluster_hdbscan'].values else 0)
-        hybrid_noise = (df['cluster_hdbscan'] == -1).sum()
+        hybrid_clusters = len(set(df['cluster_label'])) - (1 if -1 in df['cluster_label'].values else 0)
+        hybrid_noise = (df['cluster_label'] == -1).sum()
         
         spatial_clusters = len(set(df['cluster_spatial_hdbscan'])) - (1 if -1 in df['cluster_spatial_hdbscan'].values else 0)
         spatial_noise = (df['cluster_spatial_hdbscan'] == -1).sum()
@@ -416,7 +309,7 @@ def compare_hdbscan_vs_hybrid(df, min_cluster_size=50, min_samples=15):
             print(f"{'Spatial':<20} {spatial_sizes.min():<10} {spatial_sizes.max():<10} "
                   f"{spatial_sizes.mean():<10.1f} {spatial_sizes.std():<12.1f}")
         
-        hybrid_sizes = df[df['cluster_hdbscan'] != -1]['cluster_hdbscan'].value_counts()
+        hybrid_sizes = df[df['cluster_label'] != -1]['cluster_label'].value_counts()
         if len(hybrid_sizes) > 0:
             print(f"{'Hybride':<20} {hybrid_sizes.min():<10} {hybrid_sizes.max():<10} "
                   f"{hybrid_sizes.mean():<10.1f} {hybrid_sizes.std():<12.1f}")
@@ -438,14 +331,14 @@ def main():
     print(f"Données chargées: {len(df):,} photos")
     
     # Limiter à un échantillon si trop de données
-    sample_size = 5000
+    sample_size = 10000000
     if len(df) > sample_size:
         print(f"Échantillonnage de {sample_size:,} photos pour le clustering...")
         df = df.sample(n=sample_size, random_state=42)
     
     # Paramètres du clustering (optimisés pour Lyon)
-    MIN_CLUSTER_SIZE = 50   # Taille min pour un cluster (réduit pour détecter plus de zones)
-    MIN_SAMPLES = 15        # Échantillons min dans voisinage (réduit pour plus de sensibilité)
+    MIN_CLUSTER_SIZE = 500   # Taille min pour un cluster (réduit pour détecter plus de zones)
+    MIN_SAMPLES = 50        # Échantillons min dans voisinage (réduit pour plus de sensibilité)
     SPATIAL_WEIGHT = 0.7    # Poids spatial augmenté
     TEXT_WEIGHT = 0.3       # Poids textuel réduit
     
@@ -459,7 +352,7 @@ def main():
     )
     
     # 2. Visualisation sur carte (avec mots-clés car hybride)
-    visualize_hdbscan_clusters(df, output_file='../maps/clusters_hdbscan_hybrid.html', show_keywords=True)
+    visualize_clusters_on_map(df, output_file='../maps/clusters_hdbscan_hybrid.html', show_keywords=True)
     
     # 3. Analyse du contenu textuel
     analyze_cluster_content(df)
