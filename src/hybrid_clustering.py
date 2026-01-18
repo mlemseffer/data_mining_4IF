@@ -6,6 +6,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import silhouette_score
 import folium
+from visualize_on_map import visualize_clusters_on_map
 
 # Import des fonctions de preprocessing depuis text_mining
 from text_mining import preprocess_dataframe, compute_tfidf_per_cluster, display_cluster_keywords
@@ -129,84 +130,6 @@ def hybrid_clustering(df, n_clusters=10, spatial_weight=0.7, text_weight=0.3, ra
     return df, kmeans, vectorizer, feature_info
 
 
-def visualize_hybrid_clusters(df, output_file='../maps/clusters_hybrid.html', sample_size=2000):
-    """
-    Visualise les clusters hybrides sur une carte interactive de Lyon.
-    
-    Args:
-        df: DataFrame avec les colonnes 'lat', 'long' et 'cluster_hybrid'
-        output_file: Nom du fichier HTML de sortie
-        sample_size: Nombre de points à afficher (pour la performance)
-    """
-    print(f"\n{'='*70}")
-    print("VISUALISATION DES CLUSTERS SUR CARTE")
-    print(f"{'='*70}")
-    
-    # Calculer les mots-clés par cluster
-    print("Calcul des mots-clés TF-IDF par cluster...")
-    cluster_keywords = compute_tfidf_per_cluster(
-        df,
-        cluster_col='cluster_hybrid',
-        top_n=3
-    )
-    
-    # Créer la carte centrée sur Lyon
-    center_lat = df['lat'].mean()
-    center_long = df['long'].mean()
-    m = folium.Map(location=[center_lat, center_long], zoom_start=12)
-    
-    # Couleurs pour les clusters
-    colors = ['red', 'blue', 'green', 'purple', 'orange', 
-              'darkred', 'lightred', 'beige', 'darkblue', 'darkgreen',
-              'cadetblue', 'darkpurple', 'pink', 'lightblue', 'lightgreen',
-              'gray', 'black', 'lightgray', 'white', 'brown']
-    
-    # Échantillonner si trop de points
-    df_sample = df.sample(min(sample_size, len(df)), random_state=42)
-    
-    print(f"Affichage de {len(df_sample):,} points sur {len(df):,}")
-    
-    # Ajouter les points colorés par cluster
-    for idx, row in df_sample.iterrows():
-        cluster_id = int(row['cluster_hybrid'])
-        folium.CircleMarker(
-            location=[row['lat'], row['long']],
-            radius=3,
-            color=colors[cluster_id % len(colors)],
-            fill=True,
-            fillColor=colors[cluster_id % len(colors)],
-            fillOpacity=0.6,
-            popup=f"Cluster {cluster_id}"
-        ).add_to(m)
-    
-    # Ajouter les centres des clusters
-    for cluster_id in sorted(df['cluster_hybrid'].unique()):
-        cluster_df = df[df['cluster_hybrid'] == cluster_id]
-        center_lat = cluster_df['lat'].mean()
-        center_long = cluster_df['long'].mean()
-        
-        # Récupérer les 3 mots-clés les plus pertinents
-        keywords = cluster_keywords.get(cluster_id, [])
-        keywords_text = '<br>'.join([f"{i+1}. {word}" for i, (word, score) in enumerate(keywords)])
-        
-        popup_html = f"""<b>Cluster {cluster_id}</b><br>
-        Taille: {len(cluster_df)} photos<br>
-        <br><b>Mots-clés:</b><br>
-        {keywords_text if keywords_text else 'Aucun'}
-        """
-        
-        folium.Marker(
-            location=[center_lat, center_long],
-            popup=folium.Popup(popup_html, max_width=250),
-            icon=folium.Icon(color=colors[cluster_id % len(colors)], icon='info-sign')
-        ).add_to(m)
-    
-    # Sauvegarder
-    m.save(output_file)
-    print(f"Carte sauvegardée: {output_file}")
-    print(f"{'='*70}\n")
-
-
 def analyze_cluster_content(df):
     """
     Analyse le contenu textuel de chaque cluster avec TF-IDF.
@@ -230,84 +153,6 @@ def analyze_cluster_content(df):
     )
 
 
-def visualize_spatial_clusters(df, output_file='../maps/clusters_spatial.html', sample_size=2000):
-    """
-    Visualise les clusters spatiaux purs sur une carte interactive de Lyon.
-    
-    Args:
-        df: DataFrame avec les colonnes 'lat', 'long' et 'cluster_spatial'
-        output_file: Nom du fichier HTML de sortie
-        sample_size: Nombre de points à afficher (pour la performance)
-    """
-    print(f"\n{'='*70}")
-    print("VISUALISATION DES CLUSTERS SPATIAUX SUR CARTE")
-    print(f"{'='*70}")
-    
-    # Calculer les mots-clés par cluster
-    print("Calcul des mots-clés TF-IDF par cluster...")
-    cluster_keywords = compute_tfidf_per_cluster(
-        df,
-        cluster_col='cluster_spatial',
-        top_n=3
-    )
-    
-    # Créer la carte centrée sur Lyon
-    center_lat = df['lat'].mean()
-    center_long = df['long'].mean()
-    m = folium.Map(location=[center_lat, center_long], zoom_start=12)
-    
-    # Couleurs pour les clusters
-    colors = ['red', 'blue', 'green', 'purple', 'orange', 
-              'darkred', 'lightred', 'beige', 'darkblue', 'darkgreen',
-              'cadetblue', 'darkpurple', 'pink', 'lightblue', 'lightgreen',
-              'gray', 'black', 'lightgray', 'white', 'brown']
-    
-    # Échantillonner si trop de points
-    df_sample = df.sample(min(sample_size, len(df)), random_state=42)
-    
-    print(f"Affichage de {len(df_sample):,} points sur {len(df):,}")
-    
-    # Ajouter les points colorés par cluster
-    for idx, row in df_sample.iterrows():
-        cluster_id = int(row['cluster_spatial'])
-        folium.CircleMarker(
-            location=[row['lat'], row['long']],
-            radius=3,
-            color=colors[cluster_id % len(colors)],
-            fill=True,
-            fillColor=colors[cluster_id % len(colors)],
-            fillOpacity=0.6,
-            popup=f"Cluster {cluster_id}"
-        ).add_to(m)
-    
-    # Ajouter les centres des clusters
-    for cluster_id in sorted(df['cluster_spatial'].unique()):
-        cluster_df = df[df['cluster_spatial'] == cluster_id]
-        center_lat = cluster_df['lat'].mean()
-        center_long = cluster_df['long'].mean()
-        
-        # Récupérer les 3 mots-clés les plus pertinents
-        keywords = cluster_keywords.get(cluster_id, [])
-        keywords_text = '<br>'.join([f"{i+1}. {word}" for i, (word, score) in enumerate(keywords)])
-        
-        popup_html = f"""<b>Cluster {cluster_id}</b><br>
-        Taille: {len(cluster_df)} photos<br>
-        <br><b>Mots-clés:</b><br>
-        {keywords_text if keywords_text else 'Aucun'}
-        """
-        
-        folium.Marker(
-            location=[center_lat, center_long],
-            popup=folium.Popup(popup_html, max_width=250),
-            icon=folium.Icon(color=colors[cluster_id % len(colors)], icon='info-sign')
-        ).add_to(m)
-    
-    # Sauvegarder
-    m.save(output_file)
-    print(f"Carte sauvegardée: {output_file}")
-    print(f"{'='*70}\n")
-
-
 def compare_spatial_vs_hybrid(df, n_clusters=10):
     """
     Compare le clustering purement spatial vs hybride.
@@ -327,7 +172,8 @@ def compare_spatial_vs_hybrid(df, n_clusters=10):
     silhouette_spatial = silhouette_score(df[['lat', 'long']], df['cluster_spatial'])
     
     # Visualiser le clustering spatial
-    visualize_spatial_clusters(df, output_file='../maps/clusters_spatial.html')
+    df['cluster_label'] = df['cluster_spatial']
+    visualize_clusters_on_map(df, output_file='../maps/clusters_spatial.html', sample_size=2000, show_keywords=False)
     
     # Clustering hybride (déjà fait)
     if 'cluster_hybrid' in df.columns:
@@ -396,7 +242,8 @@ def main():
     )
     
     # 2. Visualisation sur carte
-    visualize_hybrid_clusters(df, output_file='../maps/clusters_hybrid.html')
+    df['cluster_label'] = df['cluster_hybrid']
+    visualize_clusters_on_map(df, output_file='../maps/clusters_hybrid.html', sample_size=2000, show_keywords=True)
     
     # 3. Analyse du contenu textuel
     analyze_cluster_content(df)

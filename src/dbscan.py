@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import os
+from visualize_on_map import visualize_clusters_on_map
 
 def find_optimal_eps(df, min_samples=15):
     """
@@ -296,86 +297,7 @@ def analyze_dbscan_clusters(df):
         print(f"{'='*70}\n")
         return None
 
-def visualize_dbscan_on_map(df, output_file='../maps/dbscan_lyon.html', sample_size=2000):
-    """
-    Visualise les clusters DBSCAN sur une carte interactive.
-    Le bruit est affiché en gris.
-    
-    Args:
-        df: DataFrame avec les colonnes 'lat', 'long' et 'cluster_label'
-        output_file: Nom du fichier HTML de sortie
-        sample_size: Nombre de points à afficher
-    """
-    import folium
-    
-    print(f"\n{'='*70}")
-    print("VISUALISATION DES CLUSTERS SUR CARTE")
-    print(f"{'='*70}")
-    
-    # Créer une carte centrée sur Lyon
-    center_lat = df['lat'].mean()
-    center_long = df['long'].mean()
-    m = folium.Map(location=[center_lat, center_long], zoom_start=12)
-    
-    # Couleurs pour les clusters
-    colors = ['red', 'blue', 'green', 'purple', 'orange', 
-              'darkred', 'lightred', 'beige', 'darkblue', 'darkgreen',
-              'cadetblue', 'darkpurple', 'pink', 'lightblue', 'lightgreen',
-              'brown', 'black', 'white']
-    
-    # Échantillonner
-    df_sample = df.sample(min(sample_size, len(df)), random_state=42)
-    print(f"Affichage de {len(df_sample):,} points sur {len(df):,}")
-    
-    # Ajouter les points de bruit en gris
-    df_noise = df_sample[df_sample['cluster_label'] == -1]
-    for idx, row in df_noise.iterrows():
-        folium.CircleMarker(
-            location=[row['lat'], row['long']],
-            radius=2,
-            color='gray',
-            fill=True,
-            fillColor='gray',
-            fillOpacity=0.3,
-            popup="Bruit (outlier)"
-        ).add_to(m)
-    
-    # Ajouter les points colorés par cluster
-    df_clustered = df_sample[df_sample['cluster_label'] != -1]
-    for idx, row in df_clustered.iterrows():
-        cluster_id = int(row['cluster_label'])
-        color = colors[cluster_id % len(colors)]
-        folium.CircleMarker(
-            location=[row['lat'], row['long']],
-            radius=3,
-            color=color,
-            fill=True,
-            fillColor=color,
-            fillOpacity=0.7,
-            popup=f"Cluster {cluster_id}"
-        ).add_to(m)
-    
-    # Ajouter les centres des clusters avec marqueurs
-    for cluster_id in sorted([c for c in df['cluster_label'].unique() if c != -1]):
-        cluster_df = df[df['cluster_label'] == cluster_id]
-        center_lat = cluster_df['lat'].mean()
-        center_long = cluster_df['long'].mean()
-        
-        popup_html = f"""<b>Cluster {cluster_id}</b><br>
-        Taille: {len(cluster_df):,} photos<br>
-        Lat: {center_lat:.4f}<br>
-        Long: {center_long:.4f}
-        """
-        
-        folium.Marker(
-            location=[center_lat, center_long],
-            popup=folium.Popup(popup_html, max_width=250),
-            icon=folium.Icon(color=colors[cluster_id % len(colors)], icon='info-sign')
-        ).add_to(m)
-    
-    m.save(output_file)
-    print(f"Carte sauvegardée: {output_file}")
-    print(f"{'='*70}\n")
+
 
 # Exemple d'usage
 if __name__ == "__main__":
@@ -410,7 +332,7 @@ if __name__ == "__main__":
     clustered_data = analyze_dbscan_clusters(df_clustered)
     
     # Étape 5: Visualiser sur une carte
-    visualize_dbscan_on_map(df_clustered, output_file='../maps/dbscan_lyon.html', sample_size=2000)
+    visualize_clusters_on_map(df_clustered, output_file='../maps/dbscan_lyon.html', sample_size=2000, show_keywords=False)
     
     # Étape 6: Sauvegarder les résultats
     output_file = '../data/flickr_data2_dbscan_clustering.csv'

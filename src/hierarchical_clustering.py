@@ -5,6 +5,7 @@ from scipy.cluster.hierarchy import dendrogram
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics import silhouette_score, silhouette_samples
 import folium
+from visualize_on_map import visualize_clusters_on_map
 
 from visualize_on_map import visualize_clusters_on_map
 
@@ -117,7 +118,9 @@ def main():
         print(f'Linkage: {link}, silhouette score: {silhouette_avg:.3f}')
 
         # Visualiser les clusters sur une carte interactive
-        visualize_clusters_on_map(df_sample, cluster_col=f'cluster_{link}', output_file=f'../maps/clusters_lyon_hierarchical_{link}.html', sample_size=1000)
+        # Renommer la colonne pour correspondre à la convention de visualize_on_map
+        df_sample['cluster_label'] = df_sample[f'cluster_{link}']
+        visualize_clusters_on_map(df_sample, output_file=f'../maps/clusters_lyon_hierarchical_{link}.html', sample_size=1000, show_keywords=False)
 
     # Sauvegarder le DataFrame échantillon avec les clusters
     df_sample.to_csv('../data/flickr_data2_hierarchical_sample.csv', index=False)
