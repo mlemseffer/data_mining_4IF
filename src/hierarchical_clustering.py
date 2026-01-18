@@ -6,6 +6,7 @@ from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics import silhouette_score, silhouette_samples
 import folium
 
+from visualize_on_map import visualize_clusters_on_map
 
 def plot_dendrogram(model, lbls, title='Hierarchical Clustering Dendrogram', x_title='Samples', **kwargs):
     # Create linkage matrix and then plot the dendrogram
@@ -88,75 +89,6 @@ def hierarchical_clustering(data, labels, metric='euclidean', linkage='average',
     txt_title = f'Hierarchical Clustering Dendrogram, linkage: {linkage}'
     f = plot_dendrogram(model=model, lbls=labels, title=txt_title, x_title='Samples')
     return model, f
-
-
-def visualize_clusters_on_map(df, cluster_col, output_file='clusters_lyon_hierarchical.html', sample_size=1000):
-    """
-    Visualise les clusters sur une carte interactive de Lyon avec mots-clés TF-IDF.
-    Args:
-        df: DataFrame avec les colonnes 'lat', 'long', cluster_col, et tokens preprocessés
-        cluster_col: nom de la colonne des labels de cluster
-        output_file: Nom du fichier HTML de sortie
-        sample_size: Nombre de points à afficher (pour la performance)
-    """
-    from text_mining import compute_tfidf_per_cluster
-    
-    print(f"\n=== Visualisation des clusters ({cluster_col}) ===")
-    
-    # Calculer les mots-clés par cluster
-    print("Calcul des mots-clés TF-IDF...")
-    cluster_keywords = compute_tfidf_per_cluster(
-        df,
-        cluster_col=cluster_col,
-        text_cols=['tags', 'title'],
-        top_n=3
-    )
-    
-    m = folium.Map(location=[45.75, 4.85], zoom_start=12)
-    colors = ['red', 'blue', 'green', 'purple', 'orange', 
-              'darkred', 'lightred', 'beige', 'darkblue', 'darkgreen',
-              'cadetblue', 'darkpurple', 'pink', 'lightblue', 'lightgreen',
-              'gray', 'black', 'lightgray', 'white', 'brown']
-    df_sample = df.sample(min(sample_size, len(df)), random_state=42)
-    
-    for idx, row in df_sample.iterrows():
-        cluster_id = row[cluster_col]
-        folium.CircleMarker(
-            location=[row['lat'], row['long']],
-            radius=3,
-            color=colors[int(cluster_id) % len(colors)],
-            fill=True,
-            fillColor=colors[int(cluster_id) % len(colors)],
-            fillOpacity=0.6,
-            popup=f"Cluster {cluster_id}"
-        ).add_to(m)
-    
-    # Ajouter les centres des clusters avec mots-clés
-    for cluster_id in sorted(df[cluster_col].unique()):
-        cluster_df = df[df[cluster_col] == cluster_id]
-        center_lat = cluster_df['lat'].mean()
-        center_long = cluster_df['long'].mean()
-        
-        # Récupérer les 3 mots-clés les plus pertinents
-        keywords = cluster_keywords.get(cluster_id, [])
-        keywords_text = '<br>'.join([f"{i+1}. {word}" for i, (word, score) in enumerate(keywords)])
-        
-        popup_html = f"""<b>Cluster {cluster_id}</b><br>
-        Taille: {len(cluster_df)} photos<br>
-        <br><b>Mots-clés:</b><br>
-        {keywords_text if keywords_text else 'Aucun'}
-        """
-        
-        folium.Marker(
-            location=[center_lat, center_long],
-            popup=folium.Popup(popup_html, max_width=250),
-            icon=folium.Icon(color=colors[int(cluster_id) % len(colors)], icon='info-sign')
-        ).add_to(m)
-    
-    m.save(output_file)
-    print(f"Carte sauvegardée dans '{output_file}'")
-    print(f"{len(df_sample):,} points affichés sur {len(df):,} total")
-
 
 def main():
     # Charger les données nettoyées

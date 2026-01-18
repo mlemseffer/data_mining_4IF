@@ -1,18 +1,65 @@
 import folium
-import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import numpy as np
 from scipy.spatial import ConvexHull
 
-from text_mining import preprocess_dataframe, compute_tfidf_per_cluster, display_cluster_keywords
+from text_mining import compute_tfidf_per_cluster, preprocess_dataframe
+from color_utils import create_cluster_color_map
 
+def analyze_cluster_content(df, cluster_col = "cluster_label"):
+    """
+    Analyse le contenu textuel de chaque cluster avec TF-IDF.
+    
+    Args:
+        df: DataFrame avec cluster_col
+    """
+    print(f"\n{'='*70}")
+    print("ANALYSE DU CONTENU TEXTUEL PAR CLUSTER (TF-IDF)")
+    print(f"{'='*70}")
+    
+    # Analyser seulement les vrais clusters (pas le bruit)
+    df_clustered = df[df[cluster_col] != -1].copy()
+    
+    if len(df_clustered) == 0:
+        print("Aucun cluster trouvé (tous les points sont du bruit)")
+        return
+    
+    if 'text_merged_tokens' not in df.columns:
+        print("\nPrétraitement du texte...")
+        df = preprocess_dataframe(df)
 
-def visualize_clusters_on_map(df, output_file, sample_size=2000, show_keywords=True):
+    # Features textuelles (TF-IDF) depuis text_merged
+    print("\nExtraction des features textuelles (TF-IDF)...")
+    
+    # Vérifier que text_merged existe
+    if 'text_merged' not in df.columns:
+        print("  ⚠ Colonne text_merged absente, utilisation de texte vide")
+        df['text_merged'] = ""
+    
+    # Filtrer les textes vides
+    valid_texts = df['text_merged'].apply(lambda x: len(str(x).strip()) > 0)
+    print(f"  - Textes valides: {valid_texts.sum()} / {len(df)}")
+
+    df_clustered = df[df[cluster_col] != -1].copy()
+        
+    cluster_keywords = {}
+
+    if len(df_clustered) > 0:
+        print("Calcul des mots-clés TF-IDF par cluster...")
+        cluster_keywords = compute_tfidf_per_cluster(
+            df_clustered,
+            cluster_col=cluster_col,
+            top_n=3
+        )
+
+    return cluster_keywords
+
+def visualize_clusters_on_map(df, output_file, cluster_col = "cluster_label", sample_size=2000, show_keywords=True):
     """
     Visualise les clusters sur une carte interactive de Lyon.
     
     Args:
-        df: DataFrame avec les colonnes 'lat', 'long' et 'cluster_label'
+        df: DataFrame avec les colonnes 'lat', 'long' et cluster_col
         output_file: Nom du fichier HTML de sortie
         sample_size: Nombre de points à afficher (pour la performance)
         show_keywords: Si True, affiche les mots-clés TF-IDF (clustering hybride uniquement)
@@ -23,36 +70,17 @@ def visualize_clusters_on_map(df, output_file, sample_size=2000, show_keywords=T
     
     # Calculer les mots-clés UNIQUEMENT si demandé 
     cluster_keywords = {}
-    if show_keywords and 'text_merged' in df.columns:
-        print("Calcul des mots-clés TF-IDF par cluster...")
-        df_clustered = df[df['cluster_label'] != -1].copy()
-        
-        if len(df_clustered) > 0:
-            cluster_keywords = compute_tfidf_per_cluster(
-                df_clustered,
-                cluster_col='cluster_label',
-                top_n=3
-            )
+    if show_keywords:
+        cluster_keywords = analyze_cluster_content(df, cluster_col=cluster_col) 
     
     # Créer la carte centrée sur Lyon
     center_lat = df['lat'].mean()
     center_long = df['long'].mean()
     m = folium.Map(location=[center_lat, center_long], zoom_start=12)
     
-    # Générer des couleurs équidistantes dans l'espace HSV
-    cluster_ids = sorted([c for c in df['cluster_label'].unique() if c != -1])
-    n_clusters = len(cluster_ids)
-    
-    # Espacer uniformément les couleurs : prendre n_clusters couleurs équidistantes sur 360° de teinte
-    colors_hex = []
-    for i in range(n_clusters):
-        hue = (i * 360 / n_clusters) / 360  # De 0 à 1
-        # Saturation et valeur élevées pour des couleurs vives
-        rgb = mcolors.hsv_to_rgb([hue, 0.85, 0.95])
-        colors_hex.append(mcolors.rgb2hex(rgb))
-    
-    # Mapping cluster_id -> couleur hex
-    color_map = {cluster_id: colors_hex[i] for i, cluster_id in enumerate(cluster_ids)}
+    # Générer des couleurs distinctes avec color_utils pour cohérence
+    cluster_ids = sorted([c for c in df[cluster_col].unique() if c != -1])
+    color_map = create_cluster_color_map(cluster_ids)
     
     # Échantillonner si trop de points
     df_sample = df.sample(min(sample_size, len(df)), random_state=42)
@@ -60,7 +88,7 @@ def visualize_clusters_on_map(df, output_file, sample_size=2000, show_keywords=T
     print(f"Affichage de {len(df_sample):,} points sur {len(df):,}")
     
     # Ajouter les points de bruit en gris
-    df_noise = df_sample[df_sample['cluster_label'] == -1]
+    df_noise = df_sample[df_sample[cluster_col] == -1]
     for row in df_noise.itertuples():
         folium.CircleMarker(
             location=[row.lat, row.long],
@@ -73,9 +101,9 @@ def visualize_clusters_on_map(df, output_file, sample_size=2000, show_keywords=T
         ).add_to(m)
     
     # Ajouter les points colorés par cluster
-    df_clustered_sample = df_sample[df_sample['cluster_label'] != -1]
+    df_clustered_sample = df_sample[df_sample[cluster_col] != -1]
     for row in df_clustered_sample.itertuples():
-        cluster_id = int(row.cluster_label)
+        cluster_id = int(getattr(row, cluster_col))
         color_hex = color_map.get(cluster_id, '#808080')  # Gris par défaut si cluster inconnu
         folium.CircleMarker(
             location=[row.lat, row.long],
@@ -88,13 +116,10 @@ def visualize_clusters_on_map(df, output_file, sample_size=2000, show_keywords=T
         ).add_to(m)
     
     # Ajouter les zones de clusters (polygones convexes)
-    for cluster_id in sorted([c for c in df['cluster_label'].unique() if c != -1]):
-        cluster_df = df[df['cluster_label'] == cluster_id]
+    for cluster_id in sorted([c for c in df[cluster_col].unique() if c != -1]):
+        cluster_df = df[df[cluster_col] == cluster_id]
         center_lat = cluster_df['lat'].mean()
         center_long = cluster_df['long'].mean()
-        
-        # Récupérer les 3 mots-clés les plus pertinents (si disponibles)
-        keywords = cluster_keywords.get(cluster_id, [])
 
         popup_html = f"""<b>Cluster {cluster_id}</b><br>
             Taille: {len(cluster_df)} photos<br>
@@ -102,7 +127,9 @@ def visualize_clusters_on_map(df, output_file, sample_size=2000, show_keywords=T
             Long: {center_long:.4f}
             """
         
-        if keywords:
+        # Récupérer les 3 mots-clés les plus pertinents (s'ils existent)
+        keywords = cluster_keywords.get(cluster_id, [])
+        if show_keywords and keywords:
             keywords_text = '<br>'.join([f"{i+1}. {word}" for i, (word, score) in enumerate(keywords)])
             popup_html += f"""<br>
             <br><b>Mots-clés:</b><br>

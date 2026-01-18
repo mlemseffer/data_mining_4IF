@@ -17,6 +17,8 @@ from text_mining import preprocess_dataframe, compute_tfidf_per_cluster, display
 
 from visualize_on_map import visualize_clusters_on_map
 
+from cluster_evaluation import evaluate_clustering, plot_silhouette
+
 def hdbscan_clustering(df, min_cluster_size=50, min_samples=10, spatial_weight=0.7, text_weight=0.3):
     """
     Clustering HDBSCAN combinant position géographique et contenu textuel.
@@ -276,7 +278,33 @@ def compare_hdbscan_vs_hybrid(df, min_cluster_size=50, min_samples=15):
     visualize_clusters_on_map(
         df_temp,
         output_file='../maps/clusters_hdbscan_spatial.html',
-        show_keywords=True  # Pas de mots-clés pour spatial pur
+        show_keywords=True
+    )
+
+        # Évaluation détaillée avec graphique de silhouette
+    print("\n" + "="*70)
+    print("ÉVALUATION DÉTAILLÉE DE LA QUALITÉ DU CLUSTERING")
+    print("="*70)
+    
+    coords = df_temp[['lat', 'long']]
+    labels = df_temp['cluster_label'].values
+    
+    evaluation_results = evaluate_clustering(
+        data=coords.values,
+        labels=labels,
+        metric='euclidean',
+        method_name='HDBSCAN Spatial'
+    )
+    
+    # Afficher le graphique de silhouette
+    fig = plot_silhouette(
+        sample_silhouette_values=evaluation_results['silhouette_samples'],
+        silhouette_avg=evaluation_results['silhouette_avg'],
+        labels=labels,
+        n_clusters=evaluation_results['n_clusters'],
+        title='Silhouette Plot - HDBSCAN Spatial',
+        file_name='hdbscan_spatial_silhouette.png',
+        show_plot=True
     )
     
     # Statistiques

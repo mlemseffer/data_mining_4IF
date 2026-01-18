@@ -4,14 +4,16 @@ import matplotlib.pyplot as plt
 import os
 
 from visualize_on_map import visualize_clusters_on_map
+from cluster_evaluation import evaluate_clustering, plot_silhouette
 
-def elbow_method(df, k_range=range(2, 21)):
+def elbow_method(df, k_range=range(2, 21), show_plot=True):
     """
     Méthode du coude pour déterminer le nombre optimal de clusters.
     
     Args:
         df: DataFrame avec les colonnes 'lat' et 'long'
         k_range: Range de nombres de clusters à tester (par défaut 2 à 20)
+        show_plot: Si True, affiche le graphique du coude
     
     Returns:
         dict: Dictionnaire avec 'k_values' et 'inertias'
@@ -40,16 +42,20 @@ def elbow_method(df, k_range=range(2, 21)):
     plt.grid(True, alpha=0.3)
     plt.xticks(list(k_range))
     plt.tight_layout()
-    plt.savefig('elbow_method.png', dpi=150, bbox_inches='tight')
-    print("\n📊 Graphique sauvegardé dans 'elbow_method.png'")
-    plt.show()
+    # Créer le dossier plots s'il n'existe pas
+    os.makedirs('../plots', exist_ok=True)
+    plt.savefig('../plots/elbow_method.png', dpi=150, bbox_inches='tight')
+    print("\n📊 Graphique sauvegardé dans '../plots/elbow_method.png'")
+    
+    if show_plot:
+        plt.show()
     
     return {
         'k_values': list(k_range),
         'inertias': inertias
     }
 
-def run_first_clustering(df, n_clusters=50):
+def run_kmeans_clustering(df, n_clusters=50):
     # 1. Sélection des colonnes géographiques
     # On travaille uniquement sur les positions GPS pour ce jalon
     coords = df[['lat', 'long']]
@@ -58,7 +64,7 @@ def run_first_clustering(df, n_clusters=50):
     kmeans = KMeans(n_clusters=n_clusters, init='k-means++', random_state=42)
     
     # 3. Prédiction des clusters
-    df['cluster_label'] = kmeans.fit_predict(coords)
+    df['cluster_kmeans'] = kmeans.fit_predict(coords)
     
     print(f"Clustering terminé. {n_clusters} zones identifiées.")
     return df
@@ -68,19 +74,19 @@ def analyze_clusters(df):
     Analyse les résultats du clustering.
     
     Args:
-        df: DataFrame avec la colonne 'cluster_label'
+        df: DataFrame avec la colonne 'cluster_kmeans'
     """
     print("\n=== Analyse des clusters ===")
     
     # Nombre d'éléments par cluster
-    cluster_counts = df['cluster_label'].value_counts().sort_index()
+    cluster_counts = df['cluster_kmeans'].value_counts().sort_index()
     print("\nNombre de photos par cluster:")
     for cluster_id, count in cluster_counts.items():
         print(f"  Cluster {cluster_id}: {count:,} photos")
     
     # Statistiques par cluster
     print("\nStatistiques par cluster:")
-    cluster_stats = df.groupby('cluster_label').agg({
+    cluster_stats = df.groupby('cluster_kmeans').agg({
         'id': 'count',
         'lat': 'mean',
         'long': 'mean'
@@ -90,48 +96,52 @@ def analyze_clusters(df):
     
     return cluster_stats
 
-def evaluate_clustering_quality(df):
-    """
-    Évalue la qualité du clustering avec le score de silhouette.
-    
-    Args:
-        df: DataFrame avec les colonnes 'lat', 'long' et 'cluster_label'
-    
-    Returns:
-        float: Score de silhouette moyen
-    """
-    from sklearn.metrics import silhouette_score
-    
-    coords = df[['lat', 'long']]
-    labels = df['cluster_label']
-    
-    silhouette_avg = silhouette_score(coords, labels, metric='euclidean')
-    # Scores récupérés du premier TP
-    print(f"\n=== Qualité du clustering ===")
-    print(f"Score de silhouette moyen: {silhouette_avg:.4f}")
-    print("  > 0.7  : Clustering excellent")
-    print("  0.5-0.7: Clustering bon")
-    print("  0.25-0.5: Clustering moyen")
-    print("  < 0.25 : Clustering faible")
-    
-    return silhouette_avg
-
 # Exemple d'usage rapide :
 if __name__ == "__main__":
     df = pd.read_csv('../data/flickr_data2_cleaned.csv')
     
     # Déterminer le nombre optimal de clusters avec la méthode du coude
     print("=== Méthode du coude ===")
-    elbow_results = elbow_method(df, k_range=range(2, 21))
+    elbow_results = elbow_method(df, k_range=range(2, 21), show_plot=False)
     
     # Utiliser un nombre de clusters choisi
-    df_clustered = run_first_clustering(df, n_clusters=9)
+    df_clustered = run_kmeans_clustering(df, n_clusters=9)
+        
+    # Visualiser sur une carte
+    visualize_clusters_on_map(
+        df_clustered,
+        output_file='../maps/clusters_kmeans.html', 
+        sample_size=2000, 
+        cluster_col='cluster_kmeans',
+        show_keywords=True
+    )
     
     # Analyser les clusters
     cluster_stats = analyze_clusters(df_clustered)
     
-    # Évaluer la qualité
-    silhouette = evaluate_clustering_quality(df_clustered)
+    # Évaluation détaillée avec graphique de silhouette
+    print("\n" + "="*70)
+    print("ÉVALUATION DÉTAILLÉE DE LA QUALITÉ DU CLUSTERING")
+    print("="*70)
     
-    # Visualiser sur une carte
-    visualize_clusters_on_map(df_clustered, output_file='../maps/clusters_lyon.html', sample_size=2000)
+    coords = df_clustered[['lat', 'long']]
+    labels = df_clustered['cluster_kmeans'].values
+    
+    evaluation_results = evaluate_clustering(
+        data=coords.values,
+        labels=labels,
+        metric='euclidean',
+        method_name='K-Means (k=9)'
+    )
+    
+    # Afficher le graphique de silhouette
+    fig = plot_silhouette(
+        sample_silhouette_values=evaluation_results['silhouette_samples'],
+        silhouette_avg=evaluation_results['silhouette_avg'],
+        labels=labels,
+        n_clusters=evaluation_results['n_clusters'],
+        title='Silhouette Plot - K-Means Clustering (k=9)',
+        file_name='kmeans_silhouette.png',
+        show_plot=True
+    )
+

@@ -28,5 +28,7 @@ data/*
 # Ignorer le dossier maps
 maps/
 
+plots/
+
 # Ignorer le dossier datz
 datz/
