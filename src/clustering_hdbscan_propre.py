@@ -149,15 +149,12 @@ def main():
     print("\nGénération de la carte pour clustering spatial...")
     # Créer une copie temporaire pour la visualisation
     df_temp = df.copy()
-    df_temp['cluster_label'] = df_temp['cluster_spatial_hdbscan']
-    
-    # Analyse du contenu textuel par cluster
-    #analyze_cluster_content(df_temp)
 
     visualize_clusters_on_map(
         df_temp,
         output_file='../maps/clusters_hdbscan_spatial_propre.html',
-        show_keywords=True
+        show_keywords=True,
+        cluster_col='cluster_spatial_hdbscan',
     )
     
     # Visualisations hiérarchiques

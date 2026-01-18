@@ -172,8 +172,13 @@ def compare_spatial_vs_hybrid(df, n_clusters=10):
     silhouette_spatial = silhouette_score(df[['lat', 'long']], df['cluster_spatial'])
     
     # Visualiser le clustering spatial
-    df['cluster_label'] = df['cluster_spatial']
-    visualize_clusters_on_map(df, output_file='../maps/clusters_spatial.html', sample_size=2000, show_keywords=False)
+    visualize_clusters_on_map(
+        df,
+        output_file='../maps/clusters_spatial.html',
+        sample_size=2000,
+        show_keywords=False,
+        cluster_col='cluster_spatial'
+    )
     
     # Clustering hybride (déjà fait)
     if 'cluster_hybrid' in df.columns:
@@ -242,8 +247,13 @@ def main():
     )
     
     # 2. Visualisation sur carte
-    df['cluster_label'] = df['cluster_hybrid']
-    visualize_clusters_on_map(df, output_file='../maps/clusters_hybrid.html', sample_size=2000, show_keywords=True)
+    visualize_clusters_on_map(
+        df,
+        output_file='../maps/clusters_hybrid.html',
+        sample_size=2000,
+        show_keywords=True,
+        cluster_col='cluster_hybrid'
+    )
     
     # 3. Analyse du contenu textuel
     analyze_cluster_content(df)

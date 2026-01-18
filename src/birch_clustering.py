@@ -29,9 +29,7 @@ def main():
     df['birch_silhouette'] = sample_silhouette_values
 
     # Visualisation sur carte interactive (folium)
-    # Renommer la colonne pour correspondre à la convention de visualize_on_map
-    df['cluster_label'] = df['birch_cluster']
-    visualize_clusters_on_map(df, output_file='../maps/clusters_lyon_birch.html', sample_size=2000, show_keywords=False)
+    visualize_clusters_on_map(df, output_file='../maps/clusters_lyon_birch.html', sample_size=2000, show_keywords=False, cluster_col='birch_cluster')
 
     # Sauvegarder les résultats
     # df.to_csv('../data/flickr_data2_birch.csv', index=False)
