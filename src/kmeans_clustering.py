@@ -44,8 +44,8 @@ def elbow_method(df, k_range=range(2, 21), show_plot=True):
     plt.tight_layout()
     # Créer le dossier plots s'il n'existe pas
     os.makedirs('../plots', exist_ok=True)
-    plt.savefig('../plots/elbow_method.png', dpi=150, bbox_inches='tight')
-    print("\n📊 Graphique sauvegardé dans '../plots/elbow_method.png'")
+    plt.savefig('../plots/plot_kmeans_elbow.png', dpi=150, bbox_inches='tight')
+    print("\n📊 Graphique sauvegardé dans '../plots/plot_kmeans_elbow.png'")
     
     if show_plot:
         plt.show()

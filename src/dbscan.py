@@ -55,8 +55,8 @@ def find_optimal_eps(df, min_samples=15):
     plt.tight_layout()
     # Créer le dossier maps si besoin
     os.makedirs('../maps', exist_ok=True)
-    plt.savefig('../maps/k_distance_graph.png', dpi=150)
-    print("\n📊 Graphique sauvegardé : '../maps/k_distance_graph.png'")
+    plt.savefig('../maps/plot_dbscan_k_distance.png', dpi=150)
+    print("\n📊 Graphique sauvegardé : '../maps/plot_dbscan_k_distance.png'")
     plt.close()
     
     # 5. Aide au diagnostic
@@ -332,7 +332,7 @@ if __name__ == "__main__":
     clustered_data = analyze_dbscan_clusters(df_clustered)
     
     # Étape 5: Visualiser sur une carte
-    visualize_clusters_on_map(df_clustered, output_file='../maps/dbscan_lyon.html', sample_size=2000, show_keywords=False)
+    visualize_clusters_on_map(df_clustered, output_file='../maps/clusters_dbscan.html', sample_size=2000, show_keywords=False)
     
     # Étape 6: Sauvegarder les résultats
     output_file = '../data/flickr_data2_dbscan_clustering.csv'
