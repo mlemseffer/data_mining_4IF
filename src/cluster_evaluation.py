@@ -147,7 +147,7 @@ def plot_silhouette(sample_silhouette_values, silhouette_avg, labels, show_plot 
     # Créer le dossier plots s'il n'existe pas
     os.makedirs('../plots', exist_ok=True)
     plt.savefig('../plots/' + file_name, dpi=300, bbox_inches='tight')
-    print(f"\n📊 Graphique de silhouette sauvegardé dans '../plots/{file_name}'")
+    print(f"\n[PLOT] Graphique de silhouette sauvegarde dans '../plots/{file_name}'")
 
     if show_plot:
         plt.show()

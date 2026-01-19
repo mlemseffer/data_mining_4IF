@@ -105,7 +105,7 @@ def plot_hdbscan_tree(clusterer, save_path='../plots/plot_hdbscan_hierarchy.png'
     
     plt.tight_layout()
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
-    print(f"✅ Dendrogramme sauvegardé: {save_path}")
+    print(f"[OK] Dendrogramme sauvegarde: {save_path}")
     
     # Informations sur la hiérarchie
     n_clusters = len(set(clusterer.labels_)) - (1 if -1 in clusterer.labels_ else 0)
@@ -166,8 +166,8 @@ def main():
     print("ÉVALUATION DÉTAILLÉE DE LA QUALITÉ DU CLUSTERING")
     print("="*70)
     
-    coords = df_temp[['lat', 'long']]
-    labels = df_temp['cluster_label'].values
+    coords = df[['lat', 'long']]
+    labels = df['cluster_spatial_hdbscan'].values
     
     evaluation_results = evaluate_clustering(
         data=coords.values,
