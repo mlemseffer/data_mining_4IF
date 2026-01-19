@@ -55,7 +55,7 @@ def find_optimal_eps(df, min_samples=15):
     plt.tight_layout()
     # Créer le dossier maps si besoin
     os.makedirs('../maps', exist_ok=True)
-    plt.savefig('../maps/plot_dbscan_k_distance.png', dpi=150)
+    plt.savefig('../plots/plot_dbscan_k_distance.png', dpi=150)
     print("\n📊 Graphique sauvegardé : '../maps/plot_dbscan_k_distance.png'")
     plt.close()
     
