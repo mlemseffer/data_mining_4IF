@@ -23,17 +23,14 @@ def elbow_method(df, k_range=range(2, 21), show_plot=True):
     
     print(f"Calcul de l'inertie pour {len(k_range)} valeurs de k...")
     
-    # Liste pour stocker les inertias
     inertias = []
     
-    # Tester différentes valeurs de k
     for k in k_range:
         kmeans = KMeans(n_clusters=k, init='k-means++', random_state=42)
         kmeans.fit(coords)
         inertias.append(kmeans.inertia_)
         print(f"  k={k:2d} → Inertie = {kmeans.inertia_:,.2f}")
     
-    # Afficher le graphique du coude
     plt.figure(figsize=(10, 6))
     plt.plot(list(k_range), inertias, 'bx-', linewidth=2, markersize=8)
     plt.xlabel('Nombre de clusters (k)', fontsize=12)
@@ -42,7 +39,6 @@ def elbow_method(df, k_range=range(2, 21), show_plot=True):
     plt.grid(True, alpha=0.3)
     plt.xticks(list(k_range))
     plt.tight_layout()
-    # Créer le dossier plots s'il n'existe pas
     os.makedirs('../plots', exist_ok=True)
     plt.savefig('../plots/plot_kmeans_elbow.png', dpi=150, bbox_inches='tight')
     print("\n📊 Graphique sauvegardé dans '../plots/plot_kmeans_elbow.png'")
@@ -96,11 +92,9 @@ def analyze_clusters(df):
     
     return cluster_stats
 
-# Exemple d'usage rapide :
 if __name__ == "__main__":
     df = pd.read_csv('../data/flickr_data2_cleaned.csv')
     
-    # Déterminer le nombre optimal de clusters avec la méthode du coude
     print("=== Méthode du coude ===")
     elbow_results = elbow_method(df, k_range=range(2, 21), show_plot=False)
     
@@ -134,7 +128,6 @@ if __name__ == "__main__":
         method_name='K-Means (k=9)'
     )
     
-    # Afficher le graphique de silhouette
     fig = plot_silhouette(
         sample_silhouette_values=evaluation_results['silhouette_samples'],
         silhouette_avg=evaluation_results['silhouette_avg'],

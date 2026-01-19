@@ -76,28 +76,23 @@ def compute_tfidf_per_cluster(df, cluster_col, text_cols=['text_merged'], top_n=
                         all_tokens.extend(tokens)
         cluster_texts[cluster_id] = all_tokens
     
-    # Calculer DF (document frequency) - dans combien de clusters apparaît chaque mot
     word_df = Counter()
     for cluster_id, tokens in cluster_texts.items():
         unique_words = set(tokens)
         for word in unique_words:
             word_df[word] += 1
     
-    # Calculer TF-IDF pour chaque cluster
     cluster_tfidf = {}
     for cluster_id, tokens in cluster_texts.items():
-        # TF: fréquence des mots dans ce cluster
         tf = Counter(tokens)
         total_words = len(tokens)
         
-        # Calculer TF-IDF pour chaque mot
         tfidf_scores = {}
         for word, count in tf.items():
             tf_normalized = count / total_words if total_words > 0 else 0
             idf = math.log(n_clusters / word_df[word]) if word_df[word] > 0 else 0
             tfidf_scores[word] = tf_normalized * idf
         
-        # Trier et garder les top_n mots
         top_words = sorted(tfidf_scores.items(), key=lambda x: x[1], reverse=True)[:top_n]
         cluster_tfidf[cluster_id] = top_words
     
@@ -127,9 +122,7 @@ def display_cluster_keywords(cluster_tfidf, title="Mots-clés par cluster (TF-ID
     print('='*60)
 
 
-# Exemple d'utilisation
 if __name__ == '__main__':
-    # Vérifier si le fichier avec clusters existe
     import os
     file_path = '../data/flickr_data2_cleaned.csv'
     

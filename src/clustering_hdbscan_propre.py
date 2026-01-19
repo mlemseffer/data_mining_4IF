@@ -84,14 +84,11 @@ def plot_hdbscan_tree(clusterer, save_path='../plots/plot_hdbscan_hierarchy.png'
     print("VISUALISATION DE LA HIÉRARCHIE HDBSCAN (DENDROGRAMME)")
     print(f"{'='*70}")
     
-    # Créer le graphique
     fig, ax = plt.subplots(figsize=(14, 8))
     
-    # Générer une palette de couleurs discrètes (liste de couleurs)
     n_clusters = len(set(clusterer.labels_)) - (1 if -1 in clusterer.labels_ else 0)
     colors = plt.cm.nipy_spectral(np.linspace(0, 1, n_clusters))
     
-    # Plot du dendrogramme condensé
     clusterer.condensed_tree_.plot(
         select_clusters=True,
         selection_palette=colors,
@@ -127,27 +124,21 @@ def main():
     print(" "*15 + "CLUSTERING HDBSCAN - ZONES TOURISTIQUES LYON")
     print("="*70 + "\n")
     
-    # Charger les données
     print("Chargement des données...")
     df = pd.read_csv('../data/flickr_data2_cleaned.csv')
     print(f"Données chargées: {len(df):,} photos")
     
-    # Limiter à un échantillon si trop de données
     sample_size = 10000000
     if len(df) > sample_size:
         print(f"Échantillonnage de {sample_size:,} photos pour le clustering...")
         df = df.sample(n=sample_size, random_state=42)
     
-    # Paramètres du clustering (optimisés pour Lyon)
-    MIN_CLUSTER_SIZE = 500   # Taille min pour un cluster (réduit pour détecter plus de zones)
-    MIN_SAMPLES = 50        # Échantillons min dans voisinage (réduit pour plus de sensibilité)
+    MIN_CLUSTER_SIZE = 500
+    MIN_SAMPLES = 50
     
-    # Clustering spatial pur
     df, clusterer = hdbscan_spatial_only(df, min_cluster_size=MIN_CLUSTER_SIZE, min_samples=MIN_SAMPLES)
     
-    # Visualisation du clustering spatial 
     print("\nGénération de la carte pour clustering spatial...")
-    # Créer une copie temporaire pour la visualisation
     df_temp = df.copy()
 
     visualize_clusters_on_map(
@@ -156,8 +147,6 @@ def main():
         show_keywords=True,
         cluster_col='cluster_spatial_hdbscan',
     )
-    
-    # Visualisations hiérarchiques
     # Dendrogramme (arbre de clustering)
     plot_hdbscan_tree(clusterer, save_path='../plots/plot_hdbscan_hierarchy.png')
 
@@ -176,7 +165,6 @@ def main():
         method_name='HDBSCAN Spatial'
     )
     
-    # Afficher le graphique de silhouette
     fig = plot_silhouette(
         sample_silhouette_values=evaluation_results['silhouette_samples'],
         silhouette_avg=evaluation_results['silhouette_avg'],

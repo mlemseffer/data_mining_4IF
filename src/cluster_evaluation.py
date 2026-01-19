@@ -38,13 +38,11 @@ def evaluate_clustering(data, labels, metric='euclidean', method_name='Clusterin
     n_clusters = len(set(labels_clean))
     n_noise = np.sum(~mask)
     
-    # Calculer les scores
     if n_clusters > 1 and len(labels_clean) > 0:
         silhouette_avg = silhouette_score(data_clean, labels_clean, metric=metric)
-        sample_silhouette_values = np.full(len(labels), np.nan)  # NaN pour le bruit
+        sample_silhouette_values = np.full(len(labels), np.nan)
         sample_silhouette_values[mask] = silhouette_samples(data_clean, labels_clean, metric=metric)
         
-        # Scores par cluster
         cluster_scores = {}
         for cluster_id in set(labels_clean):
             cluster_mask = labels == cluster_id
@@ -105,13 +103,11 @@ def plot_silhouette(sample_silhouette_values, silhouette_avg, labels, show_plot 
     fig = plt.figure(figsize=figsize)
     ax = plt.gca()
     
-    # Créer un mapping des cluster IDs vers leur index
     cluster_ids_sorted = sorted(set(labels_clean))
     cluster_to_index = {cid: idx for idx, cid in enumerate(cluster_ids_sorted)}
     
     y_lower = 10
     for i in cluster_ids_sorted:
-        # Récupérer les scores de silhouette pour le cluster i
         ith_cluster_values = sample_silhouette_clean[labels_clean == i]
         ith_cluster_values = np.sort(ith_cluster_values)
         
@@ -144,7 +140,6 @@ def plot_silhouette(sample_silhouette_values, silhouette_avg, labels, show_plot 
     
     plt.tight_layout()
 
-    # Créer le dossier plots s'il n'existe pas
     os.makedirs('../plots', exist_ok=True)
     plt.savefig('../plots/' + file_name, dpi=300, bbox_inches='tight')
     print(f"\n[PLOT] Graphique de silhouette sauvegarde dans '../plots/{file_name}'")
@@ -286,12 +281,10 @@ def evaluate_and_compare(data, clustering_methods, metric='euclidean',
     """
     results_dict = {}
     
-    # Évaluer chaque méthode
     for method_name, labels in clustering_methods.items():
         results = evaluate_clustering(data, labels, metric=metric, method_name=method_name)
         results_dict[method_name] = results
         
-        # Afficher le graphique de silhouette si demandé
         if show_silhouette_plots and not np.isnan(results['silhouette_avg']):
             fig = plot_silhouette(
                 results['silhouette_samples'],
@@ -302,13 +295,10 @@ def evaluate_and_compare(data, clustering_methods, metric='euclidean',
             )
             plt.show()
     
-    # Créer le tableau comparatif
     comparison_df = create_comparison_table(results_dict)
     
-    # Afficher les scores par cluster
     print_cluster_silhouette_scores(results_dict)
     
-    # Afficher les graphiques de comparaison
     if show_plots:
         fig = compare_clustering_methods(results_dict)
         plt.show()
@@ -316,7 +306,6 @@ def evaluate_and_compare(data, clustering_methods, metric='euclidean',
     return results_dict, comparison_df
 
 
-# Exemple d'utilisation
 if __name__ == '__main__':
     print("Module d'évaluation de clustering chargé.")
     print("Utilisez evaluate_and_compare() pour comparer plusieurs méthodes.")

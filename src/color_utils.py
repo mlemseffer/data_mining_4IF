@@ -117,9 +117,7 @@ def create_cluster_color_map(cluster_ids_sorted):
     return color_map
 
 
-# Test et exemple
 if __name__ == '__main__':
-    # Test avec différents nombres de clusters
     for n in [5, 15, 30, 60]:
         print(f"\n{n} clusters:")
         colors = get_color_palette(n)

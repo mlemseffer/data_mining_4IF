@@ -132,19 +132,16 @@ def hdbscan_clustering(df, min_cluster_size=50, min_samples=10, spatial_weight=0
             )
             print(f"  - Score de silhouette: {silhouette_avg:.3f}")
     
-    # 7. Statistiques par cluster
     print(f"\n{'='*70}")
     print("STATISTIQUES PAR CLUSTER")
     print(f"{'='*70}")
     print(f"{'Cluster':<10} {'Taille':<10} {'Lat moy':<12} {'Long moy':<12} {'% du total':<12}")
     print('-'*70)
     
-    # Afficher le bruit en premier
     if n_noise > 0:
         percentage = (n_noise / len(df)) * 100
         print(f"{'BRUIT (-1)':<10} {n_noise:<10} {'-':<12} {'-':<12} {percentage:<12.1f}%")
     
-    # Afficher les clusters
     for cluster_id in sorted([c for c in set(cluster_labels) if c != -1]):
         cluster_df = df[df['cluster_label'] == cluster_id]
         size = len(cluster_df)
@@ -353,12 +350,10 @@ def main():
     print(" "*15 + "CLUSTERING HDBSCAN - ZONES TOURISTIQUES LYON")
     print("="*70 + "\n")
     
-    # Charger les données
     print("Chargement des données...")
     df = pd.read_csv('../data/flickr_data2_cleaned.csv')
     print(f"Données chargées: {len(df):,} photos")
     
-    # Limiter à un échantillon si trop de données
     sample_size = 10000000
     if len(df) > sample_size:
         print(f"Échantillonnage de {sample_size:,} photos pour le clustering...")

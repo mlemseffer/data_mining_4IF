@@ -50,10 +50,8 @@ def hybrid_clustering(df, n_clusters=10, spatial_weight=0.7, text_weight=0.3, ra
     spatial_scaled = scaler.fit_transform(spatial_features)
     print(f"  - Features spatiales: {spatial_scaled.shape}")
     
-    # 3. Features textuelles (TF-IDF) depuis text_merged
     print("\nExtraction des features textuelles (TF-IDF)...")
     
-    # Vérifier que text_merged existe
     if 'text_merged' not in df.columns:
         print("  ⚠ Colonne text_merged absente, utilisation de texte vide")
         df['text_merged'] = ""
@@ -222,12 +220,10 @@ def main():
     print(" "*15 + "CLUSTERING HYBRIDE - ZONES TOURISTIQUES LYON")
     print("="*70 + "\n")
     
-    # Charger les données
     print("Chargement des données...")
     df = pd.read_csv('../data/flickr_data2_cleaned.csv')
     print(f"Données chargées: {len(df):,} photos")
     
-    # Limiter à un échantillon si trop de données
     sample_size = 5000
     if len(df) > sample_size:
         print(f"Échantillonnage de {sample_size:,} photos pour le clustering...")
