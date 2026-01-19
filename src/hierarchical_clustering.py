@@ -117,7 +117,7 @@ def main():
 
         # Visualiser les clusters sur une carte interactive
         visualize_clusters_on_map(
-            df_sample, output_file=f'../maps/clusters_lyon_hierarchical_{link}.html',
+            df_sample, output_file=f'../maps/clusters_hierarchical_{link}.html',
             sample_size=1000,
             show_keywords=False,
             cluster_col=f'cluster_{link}'

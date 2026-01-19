@@ -65,7 +65,7 @@ def hdbscan_spatial_only(df, min_cluster_size=50, min_samples=10):
     
     return df, clusterer
 
-def plot_hdbscan_tree(clusterer, save_path='../plots/hdbscan_hierarchy.png'):
+def plot_hdbscan_tree(clusterer, save_path='../plots/plot_hdbscan_hierarchy.png'):
     """
     Visualise l'arbre hiérarchique de HDBSCAN (dendrogramme).
     Montre comment les clusters se forment à différentes échelles de densité.
@@ -152,14 +152,14 @@ def main():
 
     visualize_clusters_on_map(
         df_temp,
-        output_file='../maps/clusters_hdbscan_spatial_propre.html',
+        output_file='../maps/clusters_hdbscan_propre.html',
         show_keywords=True,
         cluster_col='cluster_spatial_hdbscan',
     )
     
     # Visualisations hiérarchiques
     # Dendrogramme (arbre de clustering)
-    plot_hdbscan_tree(clusterer, save_path='../plots/hdbscan_hierarchy.png')
+    plot_hdbscan_tree(clusterer, save_path='../plots/plot_hdbscan_hierarchy.png')
 
     # Évaluation détaillée avec graphique de silhouette
     print("\n" + "="*70)
@@ -183,7 +183,7 @@ def main():
         labels=labels,
         n_clusters=evaluation_results['n_clusters'],
         title='Silhouette Plot - HDBSCAN Spatial',
-        file_name='hdbscan_spatial_propre_silhouette.png',
+        file_name='plot_hdbscan_propre_silhouette.png',
         show_plot=True
     )
 
