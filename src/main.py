@@ -279,18 +279,15 @@ def main():
     print(" "*15 + "ANALYSE DE CLUSTERING - ZONES TOURISTIQUES LYON")
     print("="*70 + "\n")
     
-    # Charger les données
     print("Chargement des données...")
     df = pd.read_csv('../data/flickr_data2_cleaned.csv')
     print(f"Données chargées: {len(df):,} photos")
     
-    # Limiter à un échantillon si nécessaire
     sample_size = 5000
     if len(df) > sample_size:
         print(f"\nÉchantillonnage de {sample_size:,} photos pour l'analyse...")
         df = df.sample(n=sample_size, random_state=42)
     
-    # Prétraiter les textes
     print("\nPrétraitement des textes (text_merged)...")
     df = preprocess_dataframe(df, text_cols=['text_merged'])
     
@@ -423,7 +420,6 @@ def main():
         )
         output_file = '../data/flickr_data2_hierarchical_complete.csv'
     
-    # Sauvegarder les résultats
     df.to_csv(output_file, index=False)
     print(f"\n{'='*70}")
     print(f"Résultats sauvegardés: {output_file}")

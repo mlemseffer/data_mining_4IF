@@ -68,21 +68,17 @@ def visualize_clusters_on_map(df, output_file, cluster_col = "cluster_label", sa
     print("VISUALISATION DES CLUSTERS SUR CARTE")
     print(f"{'='*70}")
     
-    # Calculer les mots-clés UNIQUEMENT si demandé 
     cluster_keywords = {}
     if show_keywords:
         cluster_keywords = analyze_cluster_content(df, cluster_col=cluster_col) 
     
-    # Créer la carte centrée sur Lyon
     center_lat = df['lat'].mean()
     center_long = df['long'].mean()
     m = folium.Map(location=[center_lat, center_long], zoom_start=12)
     
-    # Générer des couleurs distinctes avec color_utils pour cohérence
     cluster_ids = sorted([c for c in df[cluster_col].unique() if c != -1])
     color_map = create_cluster_color_map(cluster_ids)
     
-    # Échantillonner si trop de points
     df_sample = df.sample(min(sample_size, len(df)), random_state=42)
     
     print(f"Affichage de {len(df_sample):,} points sur {len(df):,}")
@@ -136,20 +132,16 @@ def visualize_clusters_on_map(df, output_file, cluster_col = "cluster_label", sa
             {keywords_text}
             """
        
-        # Obtenir la couleur pour ce cluster
         color_hex = color_map.get(cluster_id, '#808080')
         
-        # Créer une zone englobante pour le cluster
         coords = cluster_df[['lat', 'long']].values
         
         if len(coords) >= 3:
-            # Utiliser l'enveloppe convexe si assez de points
             try:
                 hull = ConvexHull(coords)
                 hull_points = coords[hull.vertices]
                 hull_coords = [[lat, lon] for lat, lon in hull_points]
                 
-                # Créer un polygone avec popup et tooltip
                 folium.Polygon(
                     locations=hull_coords,
                     color=color_hex,
@@ -161,25 +153,21 @@ def visualize_clusters_on_map(df, output_file, cluster_col = "cluster_label", sa
                     tooltip=f"Cluster {cluster_id} ({len(cluster_df)} photos)"
                 ).add_to(m)
             except Exception as e:
-                # Si le convex hull échoue, utiliser un cercle
                 print(f"  Convex hull échoué pour cluster {cluster_id}, utilisation d'un cercle")
-                # Calculer le rayon englobant (en mètres)
                 from math import radians, cos, sin, sqrt
                 
-                # Distance max du centre
                 max_dist = 0
                 for lat, lon in coords:
-                    # Formule de Haversine simplifiée pour petites distances
                     dlat = radians(lat - center_lat)
                     dlon = radians(lon - center_long)
                     a = sin(dlat/2)**2 + cos(radians(center_lat)) * cos(radians(lat)) * sin(dlon/2)**2
                     c = 2 * sqrt(a)
-                    dist = 6371000 * c  # Rayon de la Terre en mètres
+                    dist = 6371000 * c
                     max_dist = max(max_dist, dist)
                 
                 folium.Circle(
                     location=[center_lat, center_long],
-                    radius=max_dist * 1.1,  # 10% de marge
+                    radius=max_dist * 1.1,
                     color=color_hex,
                     fill=True,
                     fillColor=color_hex,
@@ -189,7 +177,6 @@ def visualize_clusters_on_map(df, output_file, cluster_col = "cluster_label", sa
                     tooltip=f"Cluster {cluster_id} ({len(cluster_df)} photos)"
                 ).add_to(m)
         elif len(coords) == 2:
-            # Pour 2 points, créer une ligne/zone entre eux
             folium.Polygon(
                 locations=[[coords[0][0], coords[0][1]], [coords[1][0], coords[1][1]]],
                 color=color_hex,
@@ -198,10 +185,9 @@ def visualize_clusters_on_map(df, output_file, cluster_col = "cluster_label", sa
                 tooltip=f"Cluster {cluster_id} ({len(cluster_df)} photos)"
             ).add_to(m)
         else:
-            # Pour 1 point, créer un cercle simple
             folium.Circle(
                 location=[coords[0][0], coords[0][1]],
-                radius=50,  # 50 mètres
+                radius=50,
                 color=color_hex,
                 fill=True,
                 fillColor=color_hex,
@@ -211,7 +197,6 @@ def visualize_clusters_on_map(df, output_file, cluster_col = "cluster_label", sa
                 tooltip=f"Cluster {cluster_id} ({len(cluster_df)} photos)"
             ).add_to(m)
     
-    # Sauvegarder
     m.save(output_file)
     print(f"Carte sauvegardée: {output_file}")
     print(f"{'='*70}\n")

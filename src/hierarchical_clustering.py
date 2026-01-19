@@ -69,11 +69,9 @@ def run_hierarchical_clustering(df, n_clusters, linkage='complete', show_dendrog
     
     df['cluster'] = model.fit_predict(X)
     
-    # Calcul du score de silhouette
     silhouette_avg = silhouette_score(X, df['cluster'])
     print(f"Score de silhouette: {silhouette_avg:.3f}")
     
-    # Afficher le dendrogramme si demandé
     if show_dendrogram:
         labels = df['id'].astype(str).values if 'id' in df.columns else None
         txt_title = f'Hierarchical Clustering Dendrogram, linkage: {linkage}'
@@ -90,10 +88,8 @@ def hierarchical_clustering(data, labels, metric='euclidean', linkage='average',
     return model, f
 
 def main():
-    # Charger les données nettoyées
     df = pd.read_csv('../data/flickr_data2_cleaned.csv')
 
-    # Limiter à un échantillon aléatoire de 2000 points pour éviter les problèmes de mémoire
     sample_size = 2000
     if len(df) > sample_size:
         df_sample = df.sample(n=sample_size, random_state=42)
@@ -105,7 +101,6 @@ def main():
     X = df_sample[['lat', 'long']].values
     labels = df_sample['id'].astype(str).values
 
-    # Tester plusieurs types de linkage et visualiser sur carte
     for link in ['complete', 'average', 'single']:
         print(f'=== Linkage: {link} ===')
         model, fig = hierarchical_clustering(X, labels, metric='euclidean', linkage=link, n_clusters=20, dist_thres=None)
@@ -115,7 +110,6 @@ def main():
         df_sample[f'silhouette_{link}'] = sample_silhouette_values
         print(f'Linkage: {link}, silhouette score: {silhouette_avg:.3f}')
 
-        # Visualiser les clusters sur une carte interactive
         visualize_clusters_on_map(
             df_sample, output_file=f'../maps/clusters_hierarchical_{link}.html',
             sample_size=1000,
@@ -123,7 +117,6 @@ def main():
             cluster_col=f'cluster_{link}'
         )
 
-    # Sauvegarder le DataFrame échantillon avec les clusters
     df_sample.to_csv('../data/flickr_data2_hierarchical_sample.csv', index=False)
     print('Résultats sauvegardés dans ../data/flickr_data2_hierarchical_sample.csv')
 

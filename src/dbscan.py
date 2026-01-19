@@ -50,23 +50,19 @@ def find_optimal_eps(df, min_samples=15):
     plt.ylabel(f'Distance au {min_samples}ème voisin (Mètres)', fontsize=12)
     plt.title(f'K-distance Graph (Lyon) - k={min_samples}', fontsize=14, fontweight='bold')
     plt.grid(True, alpha=0.3)
-    # Zoomer sur la partie utile si nécessaire (on ignore les outliers extrêmes)
     plt.ylim(0, np.percentile(k_distances_meters, 98)) 
     plt.tight_layout()
-    # Créer le dossier maps si besoin
     os.makedirs('../maps', exist_ok=True)
     plt.savefig('../plots/plot_dbscan_k_distance.png', dpi=150)
     print("\n📊 Graphique sauvegardé : '../maps/plot_dbscan_k_distance.png'")
     plt.close()
     
-    # 5. Aide au diagnostic
     print(f"\n📊 Analyse des distances (en MÈTRES) :")
     percentiles = [50, 75, 85, 90, 95, 98]
     for p in percentiles:
         val_m = np.percentile(k_distances_meters, p)
         print(f"   Percentile {p:2d}%: {val_m:.2f} mètres")
     
-    # 6. Suggestion (percentile 80 souvent optimal)
     suggested_eps_rad = np.percentile(k_distances_rad, 80)
     suggested_eps_m = suggested_eps_rad * 6371000
     
@@ -99,18 +95,14 @@ def test_dbscan_parameters(df, eps_range, min_samples_range):
     
     for eps in eps_range:
         for min_samples in min_samples_range:
-            # Apply DBSCAN
             coords_rad = np.radians(df[['lat', 'long']].values)
             dbscan = DBSCAN(eps=eps, min_samples=min_samples, metric='haversine')
             labels = dbscan.fit_predict(coords_rad)
             
-            # Compter les clusters et le bruit
             n_clusters = len(set(labels)) - (1 if -1 in labels else 0)
             n_noise = list(labels).count(-1)
             
-            # Calculer le score de silhouette (si au moins 2 clusters)
             if n_clusters >= 2:
-                # Exclure le bruit pour le calcul de silhouette
                 mask = labels != -1
                 if mask.sum() > 0:
                     try:
@@ -299,25 +291,21 @@ def analyze_dbscan_clusters(df):
 
 
 
-# Exemple d'usage
 if __name__ == "__main__":
     print("\n" + "="*70)
     print(" "*20 + "CLUSTERING DBSCAN - LYON")
     print("="*70 + "\n")
     
-    # Chargement des données
     print("Chargement des données...")
     df = pd.read_csv('../data/flickr_data2_cleaned.csv')
     print(f"Données chargées: {len(df):,} photos")
     
-    # Échantillonnage pour performance
     sample_size = 5000
     if len(df) > sample_size:
         print(f"Échantillonnage de {sample_size:,} photos pour le clustering...")
         df = df.sample(n=sample_size, random_state=42)
     
-    # Paramètres optimisés
-    min_samples = 15  # Plus robuste que 4
+    min_samples = 15
     
     # Étape 1: Trouver eps optimal avec k-distance graph
     suggested_eps = find_optimal_eps(df, min_samples=min_samples)
