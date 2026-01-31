@@ -656,6 +656,70 @@ def generate_interactive_cluster_html(cleaned_csv, clustering_csv, output_file='
     return df_stats
 
 if __name__ == "__main__":
-    # Generate both static and temporal maps
-    generate_lyon_map('../data/flickr_data2_cleaned.csv')
+    print("\n" + "="*70)
+    print(" "*15 + "VISUALISATION TEMPORELLE - LYON FLICKR")
+    print("="*70 + "\n")
+    
+    print("Choisissez une visualisation :")
+    print("1. Carte statique simple (MarkerCluster)")
+    print("2. Carte temporelle avec couches par mois")
+    print("3. Histogramme des clusters par mois (Plotly)")
+    print("4. Visualisation interactive : histogramme + carte synchronisée")
+    print("5. Tout générer")
+    
+    choice = input("\nVotre choix (1-5) : ").strip()
+    
+    csv_path = '../data/flickr_data2_cleaned.csv'
+    
+    if choice == '1':
+        generate_lyon_map(csv_path)
+    
+    elif choice == '2':
+        sample = input("Échantillonner les données ? (appuyez sur Entrée pour non, ou entrez la taille) : ").strip()
+        sample_size = int(sample) if sample else None
+        generate_temporal_lyon_map(csv_path, time_freq='MS', sample_size=sample_size)
+    
+    elif choice == '3':
+        if not PLOTLY_AVAILABLE:
+            print("\n❌ Plotly n'est pas installé. Installez avec : pip install plotly")
+        else:
+            clustering_file = input("Fichier de clustering (appuyez sur Entrée pour '../data/flickr_data2_hierarchical_complete.csv') : ").strip()
+            if not clustering_file:
+                clustering_file = '../data/flickr_data2_hierarchical_complete.csv'
+            generate_cluster_histogram(csv_path, clustering_file)
+    
+    elif choice == '4':
+        if not PLOTLY_AVAILABLE:
+            print("\n❌ Plotly n'est pas installé. Installez avec : pip install plotly")
+        else:
+            clustering_file = input("Fichier de clustering (appuyez sur Entrée pour '../data/flickr_data2_hierarchical_complete.csv') : ").strip()
+            if not clustering_file:
+                clustering_file = '../data/flickr_data2_hierarchical_complete.csv'
+            generate_interactive_cluster_html(csv_path, clustering_file)
+    
+    elif choice == '5':
+        print("\n🚀 Génération de toutes les visualisations...\n")
+        
+        print("[1/4] Carte statique...")
+        generate_lyon_map(csv_path)
+        
+        print("\n[2/4] Carte temporelle (échantillon de 5000 points)...")
+        generate_temporal_lyon_map(csv_path, time_freq='MS', sample_size=5000)
+        
+        if PLOTLY_AVAILABLE:
+            clustering_file = '../data/flickr_data2_hierarchical_complete.csv'
+            
+            print("\n[3/4] Histogramme des clusters...")
+            generate_cluster_histogram(csv_path, clustering_file)
+            
+            print("\n[4/4] Visualisation interactive...")
+            generate_interactive_cluster_html(csv_path, clustering_file)
+        else:
+            print("\n⚠ Plotly non disponible, visualisations 3 et 4 ignorées")
+        
+        print("\n✅ Toutes les visualisations ont été générées !")
+    
+    else:
+        print("❌ Choix invalide")
+    
     print("\n" + "="*70)
