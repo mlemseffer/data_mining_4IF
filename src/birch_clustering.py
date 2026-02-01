@@ -17,8 +17,9 @@ def main():
     X = df[['lat', 'long']].values
 
     print(f"Clustering BIRCH sur {len(df)} points...")
-    n_clusters = 21
-    model = birch_clustering(X, n_clusters=n_clusters)
+    n_clusters = 100  # Augmenté pour plus de granularité
+    threshold = 0.003  # Réduit pour plus de sensibilité
+    model = birch_clustering(X, n_clusters=n_clusters, threshold=threshold)
     df['birch_cluster'] = model.labels_
 
     silhouette_avg = silhouette_score(X, model.labels_, metric='euclidean')

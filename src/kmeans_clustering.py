@@ -98,8 +98,10 @@ if __name__ == "__main__":
     print("=== Méthode du coude ===")
     elbow_results = elbow_method(df, k_range=range(2, 21), show_plot=False)
     
-    # Utiliser un nombre de clusters choisi
-    df_clustered = run_kmeans_clustering(df, n_clusters=9)
+    # Utiliser 100 clusters pour plus de granularité
+    n_clusters = 100
+    print(f"\n=== Clustering K-Means avec {n_clusters} clusters ===")
+    df_clustered = run_kmeans_clustering(df, n_clusters=n_clusters)
         
     # Visualiser sur une carte
     visualize_clusters_on_map(
@@ -125,7 +127,7 @@ if __name__ == "__main__":
         data=coords.values,
         labels=labels,
         metric='euclidean',
-        method_name='K-Means (k=9)'
+        method_name=f'K-Means (k={n_clusters})'
     )
     
     fig = plot_silhouette(
@@ -133,7 +135,7 @@ if __name__ == "__main__":
         silhouette_avg=evaluation_results['silhouette_avg'],
         labels=labels,
         n_clusters=evaluation_results['n_clusters'],
-        title='Silhouette Plot - K-Means Clustering (k=9)',
+        title=f'Silhouette Plot - K-Means Clustering (k={n_clusters})',
         file_name='kmeans_silhouette.png',
         show_plot=True
     )
