@@ -17,6 +17,9 @@ try:
 except ImportError:
     DASH_AVAILABLE = False
 
+import calendar
+from collections import Counter
+
 def bin_data_by_time(df, time_column='date_taken_year', freq='YS'):
     """
     Bins the dataframe into time periods for temporal visualization.
@@ -655,6 +658,381 @@ def generate_interactive_cluster_html(cleaned_csv, clustering_csv, output_file='
     
     return df_stats
 
+def analyze_seasonal_trends(csv_path, output_file='../maps/seasonal_trends.html'):
+    """
+    Analyse les tendances saisonnières du tourisme à Lyon.
+    Identifie les mois de haute/basse saison et les patterns récurrents.
+    
+    Args:
+        csv_path: Chemin vers le CSV de données nettoyées
+        output_file: Fichier HTML de sortie
+    
+    Returns:
+        DataFrame avec statistiques mensuelles
+    """
+    if not PLOTLY_AVAILABLE:
+        print("❌ Plotly not installed. Install with: pip install plotly")
+        return
+    
+    print("\n" + "="*70)
+    print(" "*15 + "ANALYSE SAISONNIÈRE - LYON FLICKR")
+    print("="*70)
+    
+    # Charger les données
+    df = pd.read_csv(csv_path)
+    print(f"\n📊 Chargement de {len(df):,} photos...")
+    
+    # Créer datetime
+    df['datetime'] = pd.to_datetime(
+        pd.DataFrame({
+            'year': df['date_taken_year'],
+            'month': df['date_taken_month'],
+            'day': df['date_taken_day']
+        }),
+        errors='coerce'
+    )
+    df = df.dropna(subset=['datetime'])
+    
+    # Extraire mois et année
+    df['month'] = df['datetime'].dt.month
+    df['year'] = df['datetime'].dt.year
+    df['month_name'] = df['datetime'].dt.month_name()
+    
+    # Statistiques globales par mois (tous les ans agrégés)
+    monthly_counts = df.groupby('month').size()
+    monthly_avg = monthly_counts.mean()
+    monthly_std = monthly_counts.std()
+    
+    # Identifier les mois de haute saison (> moyenne + 0.5 * std)
+    high_season_threshold = monthly_avg + (0.5 * monthly_std)
+    low_season_threshold = monthly_avg - (0.5 * monthly_std)
+    
+    high_season_months = monthly_counts[monthly_counts > high_season_threshold]
+    low_season_months = monthly_counts[monthly_counts < low_season_threshold]
+    
+    # Statistiques par mois et par année
+    monthly_yearly = df.groupby(['year', 'month']).size().reset_index(name='count')
+    
+    print(f"\n📈 Statistiques saisonnières :")
+    print(f"   Période analysée : {df['year'].min()} - {df['year'].max()}")
+    print(f"   Total de photos : {len(df):,}")
+    print(f"   Moyenne mensuelle : {monthly_avg:.0f} photos")
+    print(f"   Écart-type : {monthly_std:.0f}")
+    
+    print(f"\n🌞 HAUTE SAISON (> {high_season_threshold:.0f} photos/mois) :")
+    for month_num in high_season_months.index:
+        month_name = calendar.month_name[month_num]
+        count = high_season_months[month_num]
+        print(f"   • {month_name:12s} : {count:,} photos (+{((count/monthly_avg - 1)*100):.1f}%)")
+    
+    print(f"\n❄️  BASSE SAISON (< {low_season_threshold:.0f} photos/mois) :")
+    for month_num in low_season_months.index:
+        month_name = calendar.month_name[month_num]
+        count = low_season_months[month_num]
+        print(f"   • {month_name:12s} : {count:,} photos ({((count/monthly_avg - 1)*100):.1f}%)")
+    
+    # Créer le graphique principal
+    month_names = [calendar.month_name[i] for i in range(1, 13)]
+    colors = ['#FF6B6B' if monthly_counts[i] > high_season_threshold 
+              else '#4ECDC4' if monthly_counts[i] < low_season_threshold 
+              else '#95A5A6' for i in range(1, 13)]
+    
+    fig = go.Figure()
+    
+    # Barres mensuelles
+    fig.add_trace(go.Bar(
+        x=month_names,
+        y=monthly_counts.values,
+        marker=dict(
+            color=colors,
+            line=dict(color='rgba(0,0,0,0.3)', width=1)
+        ),
+        text=monthly_counts.values,
+        textposition='outside',
+        texttemplate='%{text:,}',
+        name='Photos par mois',
+        hovertemplate='<b>%{x}</b><br>' +
+                      'Photos: %{y:,}<br>' +
+                      '<extra></extra>'
+    ))
+    
+    # Ligne de moyenne
+    fig.add_hline(
+        y=monthly_avg, 
+        line_dash="dash", 
+        line_color="black",
+        annotation_text=f"Moyenne ({monthly_avg:.0f})",
+        annotation_position="right"
+    )
+    
+    # Zones haute/basse saison
+    fig.add_hrect(
+        y0=high_season_threshold, 
+        y1=monthly_counts.max() * 1.1,
+        fillcolor="red", 
+        opacity=0.1,
+        annotation_text="Haute saison",
+        annotation_position="top left"
+    )
+    
+    fig.add_hrect(
+        y0=0, 
+        y1=low_season_threshold,
+        fillcolor="blue", 
+        opacity=0.1,
+        annotation_text="Basse saison",
+        annotation_position="bottom left"
+    )
+    
+    fig.update_layout(
+        title='<b>Saisonnalité du Tourisme à Lyon</b><br><sub>Nombre de photos Flickr par mois (toutes années confondues)</sub>',
+        xaxis_title='Mois',
+        yaxis_title='Nombre de photos',
+        height=600,
+        template='plotly_white',
+        showlegend=False,
+        font=dict(size=12)
+    )
+    
+    # Sauvegarder
+    fig.write_html(output_file)
+    print(f"\n✅ Graphique sauvegardé : {output_file}")
+    
+    # Créer un second graphique : évolution année par année
+    fig2 = go.Figure()
+    
+    for year in sorted(df['year'].unique()):
+        year_data = monthly_yearly[monthly_yearly['year'] == year]
+        # Créer un dataframe complet avec tous les mois (remplir les manquants avec 0)
+        all_months = pd.DataFrame({'month': range(1, 13)})
+        year_data_full = all_months.merge(year_data[['month', 'count']], on='month', how='left').fillna(0)
+        
+        fig2.add_trace(go.Scatter(
+            x=month_names,
+            y=year_data_full['count'],
+            mode='lines+markers',
+            name=str(year),
+            line=dict(width=2),
+            marker=dict(size=6)
+        ))
+    
+    fig2.update_layout(
+        title='<b>Évolution Mensuelle par Année</b><br><sub>Tendances saisonnières comparées année par année</sub>',
+        xaxis_title='Mois',
+        yaxis_title='Nombre de photos',
+        height=600,
+        template='plotly_white',
+        hovermode='x unified',
+        legend=dict(
+            title='Année',
+            orientation='v',
+            yanchor='top',
+            y=1,
+            xanchor='left',
+            x=1.02
+        )
+    )
+    
+    output_file2 = output_file.replace('.html', '_yearly.html')
+    fig2.write_html(output_file2)
+    print(f"✅ Graphique annuel sauvegardé : {output_file2}")
+    
+    print("\n" + "="*70)
+    
+    return monthly_counts
+
+def detect_special_events(csv_path, threshold_multiplier=2.5, output_file='../maps/special_events.html'):
+    """
+    Détecte les pics d'activité anormaux correspondant à des événements spéciaux.
+    Identifie les jours avec un nombre de photos significativement supérieur à la moyenne.
+    
+    Args:
+        csv_path: Chemin vers le CSV de données nettoyées
+        threshold_multiplier: Multiplicateur du seuil (défaut: 2.5 écarts-types)
+        output_file: Fichier HTML de sortie
+    
+    Returns:
+        DataFrame avec les événements détectés
+    """
+    if not PLOTLY_AVAILABLE:
+        print("❌ Plotly not installed. Install with: pip install plotly")
+        return
+    
+    print("\n" + "="*70)
+    print(" "*15 + "DÉTECTION D'ÉVÉNEMENTS SPÉCIAUX - LYON")
+    print("="*70)
+    
+    # Charger les données
+    df = pd.read_csv(csv_path)
+    print(f"\n🔍 Analyse de {len(df):,} photos...")
+    
+    # Créer datetime
+    df['datetime'] = pd.to_datetime(
+        pd.DataFrame({
+            'year': df['date_taken_year'],
+            'month': df['date_taken_month'],
+            'day': df['date_taken_day']
+        }),
+        errors='coerce'
+    )
+    df = df.dropna(subset=['datetime'])
+    df['date'] = df['datetime'].dt.date
+    
+    # Compter photos par jour
+    daily_counts = df.groupby('date').size()
+    
+    # Statistiques
+    mean_daily = daily_counts.mean()
+    std_daily = daily_counts.std()
+    median_daily = daily_counts.median()
+    threshold = mean_daily + (threshold_multiplier * std_daily)
+    
+    print(f"\n📊 Statistiques quotidiennes :")
+    print(f"   Moyenne : {mean_daily:.1f} photos/jour")
+    print(f"   Médiane : {median_daily:.0f} photos/jour")
+    print(f"   Écart-type : {std_daily:.1f}")
+    print(f"   Seuil de détection : {threshold:.0f} photos/jour ({threshold_multiplier} × σ)")
+    
+    # Détecter anomalies
+    anomalies = daily_counts[daily_counts > threshold].sort_values(ascending=False)
+    
+    print(f"\n🎉 {len(anomalies)} événements spéciaux détectés :")
+    print("="*70)
+    
+    # Analyser chaque événement
+    events = []
+    for date, count in anomalies.items():
+        day_df = df[df['date'] == date]
+        
+        # Extraire mots-clés du jour
+        if 'text_merged' in day_df.columns:
+            text_merged = ' '.join(day_df['text_merged'].dropna().astype(str))
+            # Nettoyer et compter les mots
+            words = text_merged.lower().split()
+            # Filtrer les mots trop courts
+            words = [w for w in words if len(w) > 3]
+            top_words = Counter(words).most_common(10)
+            keywords = ', '.join([f"{w[0]} ({w[1]})" for w in top_words[:5]])
+        else:
+            keywords = "N/A"
+        
+        # Statistiques géographiques
+        lat_mean = day_df['lat'].mean()
+        long_mean = day_df['long'].mean()
+        
+        events.append({
+            'date': date,
+            'day_name': pd.to_datetime(date).strftime('%A'),
+            'photos': count,
+            'ratio': count / mean_daily,
+            'keywords': keywords,
+            'lat': lat_mean,
+            'long': long_mean,
+            'n_users': day_df['user'].nunique() if 'user' in day_df.columns else 0
+        })
+        
+        # Afficher les 20 premiers événements
+        if len(events) <= 20:
+            print(f"\n📅 {date} ({pd.to_datetime(date).strftime('%A')}) :")
+            print(f"   • Photos : {count:,} ({count/mean_daily:.1f}× la moyenne)")
+            print(f"   • Utilisateurs : {events[-1]['n_users']}")
+            print(f"   • Mots-clés : {keywords[:100]}...")
+    
+    events_df = pd.DataFrame(events)
+    
+    # Afficher résumé
+    if len(events) > 20:
+        print(f"\n... et {len(events) - 20} autres événements (voir graphique)")
+    
+    # Identifier patterns
+    print(f"\n📈 Analyse des patterns :")
+    
+    # Événements par jour de la semaine
+    day_counts = events_df['day_name'].value_counts()
+    print(f"\n   Jours les plus fréquents :")
+    for day, count in day_counts.head(3).items():
+        print(f"   • {day:10s} : {count} événements")
+    
+    # Événements par mois
+    events_df['month'] = pd.to_datetime(events_df['date']).dt.month
+    month_counts = events_df['month'].value_counts().sort_index()
+    print(f"\n   Mois les plus actifs :")
+    for month, count in month_counts.head(3).items():
+        month_name = calendar.month_name[month]
+        print(f"   • {month_name:10s} : {count} événements")
+    
+    # Créer visualisation
+    fig = go.Figure()
+    
+    # Timeline des événements
+    fig.add_trace(go.Scatter(
+        x=events_df['date'],
+        y=events_df['photos'],
+        mode='markers',
+        marker=dict(
+            size=events_df['photos'] / 20,  # Taille proportionnelle
+            color=events_df['ratio'],
+            colorscale='Reds',
+            showscale=True,
+            colorbar=dict(title="× Moyenne"),
+            line=dict(width=1, color='darkred')
+        ),
+        text=events_df['keywords'].str[:50],
+        hovertemplate='<b>%{x}</b><br>' +
+                      'Photos: %{y:,}<br>' +
+                      'Ratio: %{marker.color:.1f}×<br>' +
+                      'Mots-clés: %{text}<br>' +
+                      '<extra></extra>',
+        name='Événements'
+    ))
+    
+    # Ligne de seuil
+    fig.add_hline(
+        y=threshold,
+        line_dash="dash",
+        line_color="red",
+        annotation_text=f"Seuil ({threshold:.0f})",
+        annotation_position="right"
+    )
+    
+    # Ligne de moyenne
+    fig.add_hline(
+        y=mean_daily,
+        line_dash="dot",
+        line_color="gray",
+        annotation_text=f"Moyenne ({mean_daily:.0f})",
+        annotation_position="right"
+    )
+    
+    fig.update_layout(
+        title='<b>Détection d\'Événements Spéciaux à Lyon</b><br><sub>Pics d\'activité photographique anormaux</sub>',
+        xaxis_title='Date',
+        yaxis_title='Nombre de photos',
+        height=600,
+        template='plotly_white',
+        hovermode='closest'
+    )
+    
+    # Sauvegarder
+    fig.write_html(output_file)
+    print(f"\n✅ Graphique sauvegardé : {output_file}")
+    
+    # Sauvegarder le tableau des événements
+    csv_output = output_file.replace('.html', '.csv')
+    events_df.to_csv(csv_output, index=False)
+    print(f"✅ Tableau des événements sauvegardé : {csv_output}")
+    
+    # Top 10 événements
+    print(f"\n🏆 TOP 10 ÉVÉNEMENTS (photos) :")
+    print("="*70)
+    for idx, row in events_df.head(10).iterrows():
+        print(f"{idx+1:2d}. {row['date']} - {row['photos']:,} photos ({row['ratio']:.1f}×)")
+        print(f"    {row['keywords'][:80]}...")
+    
+    print("\n" + "="*70)
+    
+    return events_df
+
 if __name__ == "__main__":
     print("\n" + "="*70)
     print(" "*15 + "VISUALISATION TEMPORELLE - LYON FLICKR")
@@ -665,9 +1043,11 @@ if __name__ == "__main__":
     print("2. Carte temporelle avec couches par mois")
     print("3. Histogramme des clusters par mois (Plotly)")
     print("4. Visualisation interactive : histogramme + carte synchronisée")
-    print("5. Tout générer")
+    print("5. Analyse saisonnière (tendances mensuelles)")
+    print("6. Détection d'événements spéciaux (pics d'activité)")
+    print("7. Tout générer")
     
-    choice = input("\nVotre choix (1-5) : ").strip()
+    choice = input("\nVotre choix (1-7) : ").strip()
     
     csv_path = '../data/flickr_data2_cleaned.csv'
     
@@ -698,24 +1078,44 @@ if __name__ == "__main__":
             generate_interactive_cluster_html(csv_path, clustering_file)
     
     elif choice == '5':
+        if not PLOTLY_AVAILABLE:
+            print("\n❌ Plotly n'est pas installé. Installez avec : pip install plotly")
+        else:
+            analyze_seasonal_trends(csv_path)
+    
+    elif choice == '6':
+        if not PLOTLY_AVAILABLE:
+            print("\n❌ Plotly n'est pas installé. Installez avec : pip install plotly")
+        else:
+            threshold = input("Seuil de détection (appuyez sur Entrée pour 2.5) : ").strip()
+            threshold_multiplier = float(threshold) if threshold else 2.5
+            detect_special_events(csv_path, threshold_multiplier=threshold_multiplier)
+    
+    elif choice == '7':
         print("\n🚀 Génération de toutes les visualisations...\n")
         
-        print("[1/4] Carte statique...")
+        print("[1/6] Carte statique...")
         generate_lyon_map(csv_path)
         
-        print("\n[2/4] Carte temporelle (échantillon de 5000 points)...")
+        print("\n[2/6] Carte temporelle (échantillon de 5000 points)...")
         generate_temporal_lyon_map(csv_path, time_freq='MS', sample_size=5000)
         
         if PLOTLY_AVAILABLE:
             clustering_file = '../data/flickr_data2_hierarchical_complete.csv'
             
-            print("\n[3/4] Histogramme des clusters...")
+            print("\n[3/6] Histogramme des clusters...")
             generate_cluster_histogram(csv_path, clustering_file)
             
-            print("\n[4/4] Visualisation interactive...")
+            print("\n[4/6] Visualisation interactive...")
             generate_interactive_cluster_html(csv_path, clustering_file)
+            
+            print("\n[5/6] Analyse saisonnière...")
+            analyze_seasonal_trends(csv_path)
+            
+            print("\n[6/6] Détection d'événements...")
+            detect_special_events(csv_path)
         else:
-            print("\n⚠ Plotly non disponible, visualisations 3 et 4 ignorées")
+            print("\n⚠ Plotly non disponible, visualisations 3-6 ignorées")
         
         print("\n✅ Toutes les visualisations ont été générées !")
     
