@@ -17,7 +17,7 @@ def main():
     X = df[['lat', 'long']].values
 
     print(f"Clustering BIRCH sur {len(df)} points...")
-    n_clusters = 12
+    n_clusters = 21
     model = birch_clustering(X, n_clusters=n_clusters)
     df['birch_cluster'] = model.labels_
 
