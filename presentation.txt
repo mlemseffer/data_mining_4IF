@@ -1,0 +1,16 @@
+Présentation finale  : 
+
+- 3 algorithmes de clustering :
+
+    Hdbscan avec dataset complet -> clustering_hdbscan_propre.html
+    Birch
+    K-means
+
+- 2 algorithmes de text mining : 
+
+    text_mining.py (TF-IDF) -> clusters_hdbscan_propre.html
+    text_mining_2.py (BM25) -> clusters_spatial_bm25.html
+
+- Algorithme temporel :
+
+    temporalDisplay.py
